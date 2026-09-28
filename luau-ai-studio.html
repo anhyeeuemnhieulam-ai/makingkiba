@@ -1,0 +1,1984 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Luau AI Studio</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#1e1e1e; --bg2:#252526; --bg3:#2d2d30; --border:#3c3c3c;
+  --text:#d4d4d4; --muted:#8a8a8a; --accent:#4fc3f7; --accent2:#7c4dff;
+  --green:#4caf50; --red:#f44336; --kw:#c586c0; --str:#ce9178; --cm:#6a9955;
+  --num:#b5cea8; --fn:#dcdcaa; --title-h:52px;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0;font-family:-apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--text);overflow:hidden}
+#app{display:flex;height:100%}
+button{transition:transform .12s ease, box-shadow .12s ease, background .2s ease}
+button:active{transform:translateY(1px) scale(.96)}
+
+/* sidebar */
+#sidebar{width:230px;min-width:230px;background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;transition:margin-left .2s;}
+#sidebar.hidden{margin-left:-230px}
+.sb-head{padding:12px 12px 8px;font-size:11px;letter-spacing:.08em;color:var(--muted);text-transform:uppercase;display:flex;justify-content:space-between;align-items:center}
+#newBtn{background:linear-gradient(150deg,#8a5bff,#6a3df5);color:#fff;border:none;border-radius:8px;padding:9px 10px;margin:0 10px 10px;font-size:13px;font-weight:600;cursor:pointer;
+  box-shadow:0 3px 0 #4a24c9, 0 5px 12px rgba(106,61,245,.4), inset 0 1px 0 rgba(255,255,255,.2)}
+#newBtn:active{box-shadow:0 1px 0 #4a24c9, 0 2px 6px rgba(106,61,245,.4), inset 0 1px 0 rgba(255,255,255,.2);transform:translateY(2px) scale(.98)}
+#scriptList{flex:1;overflow-y:auto;padding:0 6px}
+.script-item{display:flex;align-items:center;gap:6px;padding:8px 8px;border-radius:6px;cursor:pointer;font-size:13px;color:#ccc;margin-bottom:2px;position:relative;transition:transform .12s, background .15s}
+.script-item:active{transform:scale(.98)}
+.script-item:hover{background:var(--bg3)}
+.script-item.active{background:#37373d;color:#fff;box-shadow:inset 3px 0 0 var(--accent)}
+.script-item .dot{width:6px;height:6px;border-radius:50%;background:var(--accent);flex-shrink:0}
+.script-item .nm{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.script-item .del{opacity:0;font-size:14px;color:var(--muted);padding:2px 4px}
+.script-item:hover .del{opacity:1}
+.script-item .del:hover{color:var(--red)}
+.empty-hint{padding:14px 10px;color:var(--muted);font-size:12.5px;line-height:1.5}
+
+/* main */
+#main{flex:1;display:flex;flex-direction:column;min-width:0}
+#topbar{height:var(--title-h);flex-shrink:0;display:flex;align-items:center;gap:10px;padding:0 12px;border-bottom:1px solid var(--border);background:var(--bg2);padding-top:env(safe-area-inset-top,0px)}
+#hamburger{background:none;border:none;color:var(--text);font-size:18px;cursor:pointer;padding:4px 6px}
+#scriptName{background:none;border:none;color:#fff;font-size:15px;font-weight:600;flex:1;min-width:0;outline:none;text-overflow:ellipsis}
+#copyBtn{background:linear-gradient(150deg,#3a3a3d,#232325);border:1px solid #444;color:var(--text);border-radius:8px;
+  width:32px;height:32px;font-size:15px;cursor:pointer;flex-shrink:0;box-shadow:0 2px 0 #171718, 0 3px 6px rgba(0,0,0,.4), inset 0 1px 0 rgba(255,255,255,.08)}
+#copyBtn:active{box-shadow:0 0 0 #171718, inset 0 1px 0 rgba(255,255,255,.08);transform:translateY(2px)}
+#copyBtn.copied{background:linear-gradient(150deg,#66d17a,#3f9d51);color:#fff;border-color:var(--green)}
+#previewBtn{background:linear-gradient(150deg,#5bc8ff,#2f9fe0);border:1px solid #2f8fd0;color:#06202e;font-weight:700;border-radius:8px;
+  width:32px;height:32px;font-size:13px;cursor:pointer;flex-shrink:0;box-shadow:0 2px 0 #1c6a94, 0 3px 8px rgba(47,159,224,.4), inset 0 1px 0 rgba(255,255,255,.35)}
+#previewBtn:active{box-shadow:0 0 0 #1c6a94, inset 0 1px 0 rgba(255,255,255,.35);transform:translateY(2px)}
+#status{font-size:12.5px;font-weight:600;padding:4px 10px 4px 6px;border-radius:12px;white-space:nowrap;flex-shrink:0;display:flex;align-items:center;gap:6px}
+.status-ok{background:rgba(76,175,80,.15);color:var(--green)}
+.status-err{background:rgba(244,67,54,.15);color:var(--red)}
+.status-empty{background:rgba(138,138,138,.15);color:var(--muted)}
+.status-busy{background:rgba(79,195,247,.15);color:var(--accent)}
+
+/* --- 3D AI orb --- */
+#aiOrb{width:13px;height:13px;border-radius:50%;flex-shrink:0;
+  background:radial-gradient(circle at 32% 28%, #fff, var(--muted) 45%, #333 100%);
+  box-shadow:0 1px 3px rgba(0,0,0,.5), inset 0 -2px 3px rgba(0,0,0,.35), inset 0 1px 2px rgba(255,255,255,.4);
+  transition:background .3s;
+}
+.status-ok #aiOrb{background:radial-gradient(circle at 32% 28%, #d8ffe0, var(--green) 45%, #1c5c22 100%);
+  box-shadow:0 0 8px rgba(76,175,80,.7), inset 0 -2px 3px rgba(0,0,0,.35), inset 0 1px 2px rgba(255,255,255,.5);}
+.status-err #aiOrb{background:radial-gradient(circle at 32% 28%, #ffd9d6, var(--red) 45%, #7a1a13 100%);
+  box-shadow:0 0 8px rgba(244,67,54,.7), inset 0 -2px 3px rgba(0,0,0,.35), inset 0 1px 2px rgba(255,255,255,.5);}
+.status-busy #aiOrb{background:radial-gradient(circle at 32% 28%, #dff3ff, var(--accent) 45%, #0d5c8a 100%);
+  animation:orbPulse 1.1s ease-in-out infinite;}
+@keyframes orbPulse{0%,100%{transform:scale(1) rotate(0deg)}50%{transform:scale(1.3) rotate(140deg)}}
+
+#editorWrap{flex:1;position:relative;overflow:hidden;background:var(--bg)}
+#editorScroll{position:absolute;inset:0;overflow:auto}
+#highlight, #codeArea{
+  margin:0;padding:14px 14px 14px 54px;font-family:'SF Mono',Consolas,Menlo,monospace;
+  font-size:13.5px;line-height:1.55;white-space:pre;min-height:100%;width:max-content;min-width:100%;
+}
+#highlight{position:relative;color:var(--text);pointer-events:none}
+#codeArea{position:absolute;top:0;left:0;background:transparent;color:transparent;caret-color:#fff;
+  border:none;outline:none;resize:none;overflow:hidden;width:100%;height:100%}
+#lineNums{position:absolute;left:0;top:0;bottom:0;width:44px;padding:14px 0;text-align:right;
+  color:#5a5a5a;font-family:'SF Mono',Consolas,Menlo,monospace;font-size:13.5px;line-height:1.55;
+  white-space:pre;overflow:hidden;
+  user-select:none;background:var(--bg2);border-right:1px solid var(--border)}
+.kw{color:var(--kw)} .str{color:var(--str)} .cm{color:var(--cm);font-style:italic} .num{color:var(--num)} .fn{color:var(--fn)}
+.type-cursor{display:inline-block;width:2px;background:var(--accent);margin-left:1px;animation:blink 0.85s steps(1) infinite}
+@keyframes blink{50%{opacity:0}}
+
+#issueBar{font-size:11.5px;color:var(--red);padding:4px 14px 4px 54px;background:#2a1f1f;border-top:1px solid #4a2323;display:none}
+#issueBar.show{display:block}
+
+#promptBar{border-top:1px solid var(--border);background:var(--bg2);padding:10px 12px;padding-bottom:calc(10px + env(safe-area-inset-bottom,0px));flex-shrink:0}
+#promptRow{display:flex;gap:8px;align-items:flex-end}
+#promptInput{flex:1;background:var(--bg3);border:1px solid var(--border);border-radius:10px;color:var(--text);
+  padding:10px 12px;font-size:13.5px;resize:none;max-height:90px;font-family:inherit;outline:none}
+#promptInput:focus{border-color:var(--accent)}
+#sendBtn{background:linear-gradient(150deg,#6fe0ff,#3fb8f0);border:none;color:#04222f;font-weight:800;font-size:16px;border-radius:10px;padding:0 16px;height:40px;cursor:pointer;flex-shrink:0;
+  box-shadow:0 3px 0 #1c7ba3, 0 5px 14px rgba(63,184,240,.45), inset 0 1px 0 rgba(255,255,255,.35)}
+#sendBtn:active{box-shadow:0 1px 0 #1c7ba3, 0 2px 6px rgba(63,184,240,.4), inset 0 1px 0 rgba(255,255,255,.35);transform:translateY(2px) scale(.98)}
+#sendBtn.stop-mode{background:linear-gradient(150deg,#ff7b7b,#e14b4b);box-shadow:0 3px 0 #9c2626, 0 5px 14px rgba(225,75,75,.45), inset 0 1px 0 rgba(255,255,255,.3)}
+#sendBtn:disabled{opacity:.6;cursor:default}
+#hint{color:var(--muted);font-size:11px;margin-top:6px}
+#welcome{flex:1;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:10px;color:var(--muted);text-align:center;padding:20px}
+#welcome b{color:var(--text)}
+
+#toast{position:fixed;left:50%;bottom:calc(90px + env(safe-area-inset-bottom,0px));transform:translateX(-50%) translateY(20px);
+  background:#3a1f1f;color:#ffb4b0;border:1px solid #6b2c2c;padding:10px 16px;border-radius:10px;font-size:13px;
+  max-width:88%;text-align:center;opacity:0;pointer-events:none;transition:opacity .25s, transform .25s;z-index:50}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+#toast.info{background:#1f2a3a;color:#a9d0ff;border-color:#2c4a6b}
+
+@media (prefers-color-scheme: light){
+  :root:not([data-theme="dark"]){--bg:#1e1e1e;--bg2:#252526;--bg3:#2d2d30;--text:#d4d4d4}
+}
+
+/* ---------- anti-lag: GPU-only transforms, contained layout ---------- */
+#editorWrap{contain:layout paint}
+#scriptList{contain:content}
+#previewCard,#choiceCard,.cube{will-change:transform}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+/* ---------- 3D cube (transform-only, very cheap) ---------- */
+.cube-scene{width:56px;height:56px;perspective:300px;margin:0 auto 6px}
+.cube{width:56px;height:56px;position:relative;transform-style:preserve-3d;animation:cubeSpin 9s linear infinite}
+.cube i{position:absolute;inset:0;border:1px solid rgba(124,77,255,.8);background:linear-gradient(145deg,rgba(124,77,255,.35),rgba(79,195,247,.2))}
+.cube i:nth-child(1){transform:translateZ(28px)}
+.cube i:nth-child(2){transform:rotateY(180deg) translateZ(28px)}
+.cube i:nth-child(3){transform:rotateY(90deg) translateZ(28px)}
+.cube i:nth-child(4){transform:rotateY(-90deg) translateZ(28px)}
+.cube i:nth-child(5){transform:rotateX(90deg) translateZ(28px)}
+.cube i:nth-child(6){transform:rotateX(-90deg) translateZ(28px)}
+@keyframes cubeSpin{from{transform:rotateX(-20deg) rotateY(0deg)}to{transform:rotateX(-20deg) rotateY(360deg)}}
+
+/* ---------- toggle choice sheet ---------- */
+#choiceSheet{position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;align-items:flex-end;justify-content:center;z-index:120}
+#choiceSheet.show{display:flex}
+#choiceCard{width:100%;max-width:480px;background:linear-gradient(160deg,#2a2a30,#1b1b1f);border:1px solid #3d3d45;border-bottom:none;
+  border-radius:18px 18px 0 0;padding:16px 14px calc(16px + env(safe-area-inset-bottom,0px));animation:sheetUp .22s ease-out}
+@keyframes sheetUp{from{transform:translateY(40px);opacity:0}to{transform:none;opacity:1}}
+#choiceTitle{font-size:14px;font-weight:700;color:#fff;margin-bottom:12px;text-align:center}
+#choiceRow{display:flex;gap:10px}
+.choice-btn{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;padding:14px 8px;border-radius:12px;cursor:pointer;color:var(--text);
+  background:linear-gradient(150deg,#3b3b44,#26262c);border:1px solid #4a4a55;box-shadow:0 4px 0 #15151a, 0 6px 12px rgba(0,0,0,.4), inset 0 1px 0 rgba(255,255,255,.08);font-family:inherit}
+.choice-btn .ci{font-size:22px}
+.choice-btn b{font-size:13px;color:#fff}
+.choice-btn small{font-size:10.5px;color:var(--muted)}
+.choice-btn:active{transform:translateY(3px);box-shadow:0 1px 0 #15151a, inset 0 1px 0 rgba(255,255,255,.08)}
+#choiceSkip{display:block;margin:12px auto 0;background:none;border:none;color:var(--muted);font-size:12px;cursor:pointer;padding:6px 10px}
+
+/* ---------- preview modal ---------- */
+#previewOverlay{position:fixed;inset:0;background:rgba(0,0,0,.65);
+  display:none;align-items:flex-end;justify-content:center;z-index:100}
+#previewOverlay.show{display:flex}
+#previewCard{width:100%;max-width:480px;max-height:82vh;background:linear-gradient(160deg,#2a2a30,#1b1b1f);
+  border-radius:18px 18px 0 0;border:1px solid #3d3d45;border-bottom:none;
+  box-shadow:0 -10px 40px rgba(0,0,0,.6), inset 0 1px 0 rgba(255,255,255,.06);
+  display:flex;flex-direction:column;transform:translateY(30px);opacity:0;transition:transform .25s ease,opacity .25s ease;
+  padding-bottom:env(safe-area-inset-bottom,0px)}
+#previewOverlay.show #previewCard{transform:translateY(0);opacity:1}
+#previewHead{display:flex;justify-content:space-between;align-items:center;padding:16px 16px 10px;font-weight:700;font-size:15px;color:#fff}
+#previewHead button{background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:50%;width:28px;height:28px;cursor:pointer}
+#previewBody{flex:1;overflow-y:auto;padding:6px 16px 16px;min-height:160px}
+#previewFoot{font-size:11px;color:var(--muted);text-align:center;padding:8px 16px 16px}
+
+.pv-scene{background:radial-gradient(ellipse at top, #23324a, #10141c 70%);border-radius:14px;padding:22px 16px;
+  min-height:180px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;
+  border:1px solid #2c3a52;box-shadow:inset 0 0 30px rgba(0,0,0,.4)}
+.pv-empty{color:var(--muted);font-size:13px;text-align:center;padding:24px 8px}
+
+/* mock GUI render */
+.pv-gui-root{width:100%;max-width:260px;margin:0 auto;border-radius:12px;overflow:hidden;
+  box-shadow:0 10px 30px rgba(0,0,0,.5), 0 0 0 1px rgba(255,255,255,.06);background:#111;transform:perspective(600px) rotateX(3deg);}
+.pv-node{padding:8px 10px;font-size:12px;position:relative}
+.pv-node .pv-tag{font-size:9px;letter-spacing:.05em;opacity:.55;text-transform:uppercase;display:block;margin-bottom:2px}
+.pv-frame{background:#20232a}
+.pv-textlabel{background:transparent;color:#fff}
+.pv-textbutton{background:linear-gradient(150deg,#4fc3f7,#2f9fe0);color:#04222f;font-weight:700;text-align:center;border-radius:8px;margin:6px 8px;box-shadow:0 3px 0 #1c6a94}
+.pv-imagelabel{background:repeating-conic-gradient(#3a3a3a 0% 25%, #2a2a2a 0% 50%) 0/16px 16px;color:#999;text-align:center;min-height:50px;display:flex;align-items:center;justify-content:center}
+
+/* mock ESP render */
+.pv-player{width:56px;height:96px;position:relative;margin:0 auto}
+.pv-player .body{position:absolute;left:14px;top:22px;width:28px;height:52px;border-radius:8px;background:#4a5568}
+.pv-player .head{position:absolute;left:18px;top:0;width:20px;height:20px;border-radius:50%;background:#4a5568}
+.pv-esp-box{position:relative;display:inline-block;padding:14px 22px 20px}
+.pv-esp-outline{position:absolute;inset:0;border-radius:10px;pointer-events:none;animation:espPulse 1.6s ease-in-out infinite}
+@keyframes espPulse{0%,100%{opacity:.55}50%{opacity:1}}
+.pv-esp-name{font-size:10px;text-align:center;margin-bottom:2px;font-weight:700}
+.pv-esp-health{width:40px;height:4px;background:#333;border-radius:2px;margin:4px auto 0;overflow:hidden}
+.pv-esp-health i{display:block;height:100%;background:linear-gradient(90deg,#4caf50,#8bd97f)}
+
+/* structure diagram */
+.pv-pill-row{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
+.pv-pill{background:var(--bg3);border:1px solid var(--border);border-radius:20px;padding:5px 11px;font-size:11.5px;
+  display:flex;align-items:center;gap:5px;animation:pvPop .35s ease backwards}
+.pv-pill b{color:var(--accent);font-weight:700}
+.pv-section-title{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin:10px 0 6px}
+@keyframes pvPop{from{opacity:0;transform:translateY(6px) scale(.9)}to{opacity:1;transform:translateY(0) scale(1)}}
+.pv-phone{position:relative;overflow:hidden;border-radius:18px;border:3px solid #3a3f4a;background:linear-gradient(180deg,#1a2233,#0d1119);box-shadow:0 8px 24px rgba(0,0,0,.5)}
+.pv-pel{position:absolute;display:flex;align-items:center;justify-content:center;text-align:center;overflow:hidden;white-space:nowrap;box-sizing:border-box}
+.pv-detail{margin-top:8px}
+.pv-states{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;background:radial-gradient(ellipse at top,#23324a,#10141c 75%);border:1px solid #2c3a52;border-radius:14px;padding:16px 10px}
+.pv-state{display:flex;flex-direction:column;align-items:center;gap:8px}
+.pv-el{display:flex;align-items:center;justify-content:center;overflow:hidden;white-space:nowrap;box-sizing:border-box;box-shadow:0 4px 12px rgba(0,0,0,.45)}
+.pv-statelab{font-size:10px;font-weight:800;padding:2px 9px;border-radius:10px}
+.pv-statelab.on{background:rgba(76,175,80,.2);color:#6fdc78}.pv-statelab.off{background:rgba(244,67,54,.18);color:#ff8a80}
+.pv-specs{display:flex;flex-wrap:wrap;gap:5px;justify-content:center;max-width:260px}
+.pv-chip{display:inline-flex;align-items:center;gap:5px;background:var(--bg3);border:1px solid var(--border);border-radius:12px;padding:3px 9px;font-size:11px;color:#cfd3da}
+.pv-swatch{width:11px;height:11px;border-radius:3px;border:1px solid rgba(255,255,255,.35);display:inline-block}
+.pv-keyscene{gap:12px}
+.pv-keyrow{display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:center}
+.pv-or{font-size:11px;color:var(--muted)}
+.pv-key{min-width:58px;height:58px;padding:0 14px;border-radius:12px;display:inline-flex;align-items:center;justify-content:center;font:800 22px ui-monospace,Menlo,monospace;color:#fff;
+  background:linear-gradient(160deg,#4d4d59,#2b2b33);border:1px solid #5d5d6b;box-shadow:0 6px 0 #16161b,0 10px 14px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.16);animation:keyPress 1.8s ease-in-out infinite}
+@keyframes keyPress{0%,70%,100%{transform:none}80%{transform:translateY(5px)}}
+.pv-keyhint{font-size:11.5px;color:#9db3c9}
+
+/* ================= Visual upgrade: 1D lines + 2D glass + 3D depth + 4D motion ================= */
+html,body{background:#0d0e14}
+/* 4D (time): slow drifting aurora, GPU transforms only */
+#aurora{position:fixed;inset:0;overflow:hidden;z-index:0;pointer-events:none}
+#aurora i{position:absolute;width:70vmax;height:70vmax;border-radius:50%;opacity:.3;will-change:transform}
+#aurora i:nth-child(1){left:-28vmax;top:-32vmax;background:radial-gradient(circle,#7c4dff,transparent 65%);animation:drift1 24s ease-in-out infinite alternate}
+#aurora i:nth-child(2){right:-32vmax;bottom:-32vmax;background:radial-gradient(circle,#00b4ff,transparent 65%);animation:drift2 28s ease-in-out infinite alternate}
+#aurora i:nth-child(3){left:15vmax;bottom:-45vmax;background:radial-gradient(circle,#ff4fa3,transparent 65%);opacity:.17;animation:drift3 32s ease-in-out infinite alternate}
+@keyframes drift1{to{transform:translate(20vmax,16vmax) scale(1.15)}}
+@keyframes drift2{to{transform:translate(-18vmax,-14vmax) scale(1.1)}}
+@keyframes drift3{to{transform:translate(12vmax,-10vmax) scale(1.2)}}
+#app{position:relative;z-index:1}
+/* 2D: flat translucent glass panels */
+#sidebar{background:rgba(24,25,34,.84);border-right:1px solid rgba(255,255,255,.07);box-shadow:8px 0 28px rgba(0,0,0,.35);z-index:3}
+#topbar{background:rgba(26,27,37,.88);border-bottom:1px solid rgba(255,255,255,.06);position:relative}
+#promptBar{background:rgba(26,27,37,.9);border-top:1px solid rgba(255,255,255,.07)}
+#editorWrap{background:rgba(17,18,25,.92);transition:box-shadow .4s}
+#lineNums{background:rgba(255,255,255,.03);border-right:1px solid rgba(255,255,255,.06)}
+#promptInput{background:rgba(255,255,255,.05);border-color:rgba(255,255,255,.1);transition:box-shadow .2s,border-color .2s}
+#promptInput:focus{box-shadow:0 0 0 3px rgba(79,195,247,.18)}
+/* 1D: thin flowing accent line, speeds up + brightens while AI writes */
+#topbar::after{content:'';position:absolute;left:0;right:0;bottom:-1px;height:2px;opacity:.55;
+  background:linear-gradient(90deg,transparent,#7c4dff,#4fc3f7,#ff4fa3,#7c4dff,transparent);background-size:200% 100%;animation:lineFlow 7s linear infinite}
+body.busy #topbar::after{opacity:1;animation-duration:1.4s}
+@keyframes lineFlow{to{background-position:200% 0}}
+body.busy #editorWrap{box-shadow:inset 0 0 0 1px rgba(79,195,247,.35),inset 0 0 48px rgba(79,195,247,.08)}
+.sb-head{padding:16px 12px 12px}
+.brand{font-size:15px;font-weight:800;letter-spacing:.02em;text-transform:none;
+  background:linear-gradient(90deg,#b39dff,#4fc3f7,#ff8fc7,#b39dff);background-size:200% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;animation:lineFlow 8s linear infinite}
+#newBtn{position:relative;overflow:hidden}
+#newBtn::after{content:'';position:absolute;top:0;left:-60%;width:36%;height:100%;background:linear-gradient(100deg,transparent,rgba(255,255,255,.4),transparent);transform:skewX(-20deg);animation:sheen 4.5s ease-in-out infinite}
+@keyframes sheen{0%,55%{transform:translateX(0) skewX(-20deg)}100%{transform:translateX(480%) skewX(-20deg)}}
+.script-item{border:1px solid transparent}
+.script-item:hover{background:rgba(255,255,255,.06)}
+.script-item.active{background:linear-gradient(90deg,rgba(124,77,255,.25),rgba(79,195,247,.08));border-color:rgba(124,77,255,.35);box-shadow:inset 3px 0 0 #7c4dff}
+.script-item.enter{animation:itemIn .38s cubic-bezier(.2,.9,.3,1.2) backwards}
+@keyframes itemIn{from{opacity:0;transform:translateX(-14px) scale(.94)}}
+/* 3D: tilt-on-touch depth cards + orbiting ring around the cube */
+[data-tilt],.pv-phone,.pv-states{transition:transform .18s ease-out;transform-style:preserve-3d}
+#welcomeCard{display:flex;flex-direction:column;align-items:center;gap:10px;padding:28px 24px;border-radius:24px;max-width:320px;
+  background:linear-gradient(160deg,rgba(255,255,255,.08),rgba(255,255,255,.02));border:1px solid rgba(255,255,255,.12);
+  box-shadow:0 18px 50px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.12)}
+.cube-scene{position:relative;margin-bottom:14px}
+.cube-scene::before{content:'';position:absolute;inset:-16px;border:1.5px solid rgba(79,195,247,.55);border-radius:50%;transform:rotateX(72deg);animation:ringSpin 6s linear infinite}
+@keyframes ringSpin{to{transform:rotateX(72deg) rotateZ(360deg)}}
+
+/* ================= Code editor upgrade ================= */
+:root{--font-code:'JetBrains Mono','SF Mono',Consolas,Menlo,monospace}
+#highlight,#codeArea,#lineNums{font-family:var(--font-code);font-size:13px;line-height:1.6;tab-size:4;-moz-tab-size:4;font-variant-ligatures:none}
+#highlight{color:#d6deeb}
+#codeArea{caret-color:#4fc3f7}
+#codeArea::selection{background:rgba(124,77,255,.4);color:transparent}
+#lineNums{padding-right:10px;color:#4b5670;background:linear-gradient(90deg,rgba(255,255,255,.04),rgba(255,255,255,.015))}
+.kw{color:#c792ea}.str{color:#c3e88d}.cm{color:#5f7e97;font-style:italic}.num{color:#f78c6c}.fn{color:#82aaff}
+.fd{color:#82aaff;font-weight:600}.ty{color:#ffcb6b}.bi{color:#7fdbca}.cn{color:#ff9e64}.pr{color:#addb67}
+.sf{color:#ff5370;font-style:italic}.lit{color:#ff9e64}.op{color:#89ddff}.pn{color:#7d8ab0}
+.ig{background-image:repeating-linear-gradient(90deg,rgba(255,255,255,.11) 0 1px,transparent 1px 4ch)}
+#curLine{position:absolute;left:0;top:0;height:20.8px;width:100%;display:none;pointer-events:none;z-index:0;
+  background:linear-gradient(90deg,rgba(124,77,255,.2),rgba(124,77,255,.05));border-left:2px solid #7c4dff}
+#editorScroll{scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.22) transparent}
+#editorScroll::-webkit-scrollbar{width:9px;height:9px}
+#editorScroll::-webkit-scrollbar-thumb{background:rgba(255,255,255,.16);border-radius:6px;border:2px solid transparent;background-clip:content-box}
+#editorTab{display:flex;align-items:center;gap:8px;height:34px;padding:0 12px;flex-shrink:0;font-size:12px;color:#d5dbea;
+  background:rgba(255,255,255,.035);border-bottom:1px solid rgba(255,255,255,.06)}
+.tab-dot{width:8px;height:8px;border-radius:50%;background:linear-gradient(135deg,#7c4dff,#4fc3f7);box-shadow:0 0 8px rgba(124,77,255,.7)}
+#tabName{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tab-lang{margin-left:auto;font-size:10px;font-weight:800;padding:2px 9px;border-radius:10px;background:rgba(124,77,255,.22);color:#c3b3ff}
+#editorMeta{display:flex;align-items:center;gap:16px;height:24px;padding:0 12px;flex-shrink:0;font-size:11px;color:#aab3cc;
+  background:linear-gradient(90deg,rgba(124,77,255,.28),rgba(79,195,247,.14));border-top:1px solid rgba(255,255,255,.07)}
+#editorMeta .sp{flex:1}
+
+/* ================= style dropdown / attachments / editor tools ================= */
+#promptTop{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:8px}
+#attachList{display:contents}
+#styleBtn{background:linear-gradient(150deg,rgba(124,77,255,.28),rgba(79,195,247,.14));border:1px solid rgba(124,77,255,.4);color:#e6e9f5;border-radius:12px;padding:6px 11px;font-size:12px;cursor:pointer;display:inline-flex;align-items:center;gap:5px;font-family:inherit}
+#styleBtn .sb-k{color:#9aa3bd}#styleBtn b{color:#fff;font-weight:700}
+#styleSheet{position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;align-items:flex-end;justify-content:center;z-index:120}
+#styleSheet.show{display:flex}
+#styleCard{width:100%;max-width:480px;max-height:74vh;display:flex;flex-direction:column;background:linear-gradient(160deg,#2a2a30,#1b1b1f);border:1px solid #3d3d45;border-bottom:none;border-radius:18px 18px 0 0;padding:14px 12px calc(12px + env(safe-area-inset-bottom,0px));animation:sheetUp .22s ease-out}
+#styleTitle{font-size:14px;font-weight:700;color:#fff;text-align:center;margin-bottom:10px}
+#styleList{overflow-y:auto;display:flex;flex-direction:column;gap:6px;overscroll-behavior:contain}
+.style-item{display:flex;align-items:center;gap:10px;text-align:left;padding:10px 12px;border-radius:12px;cursor:pointer;color:var(--text);background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);font-family:inherit}
+.style-item .si{font-size:20px;width:26px;text-align:center;flex-shrink:0}
+.style-item .st{flex:1;display:flex;flex-direction:column;gap:2px;min-width:0}
+.style-item .st b{font-size:13px;color:#fff}
+.style-item .st small{font-size:11px;color:var(--muted);line-height:1.35}
+.style-item .ck{opacity:0;color:#6fdc78;font-weight:800}
+.style-item.sel{background:linear-gradient(90deg,rgba(124,77,255,.28),rgba(79,195,247,.1));border-color:rgba(124,77,255,.55)}
+.style-item.sel .ck{opacity:1}
+.attach-chip{display:inline-flex;align-items:center;gap:8px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:12px;padding:5px 6px 5px 10px;font-size:12px;max-width:100%}
+.attach-chip .an{display:flex;flex-direction:column;min-width:0;cursor:pointer}
+.attach-chip .an b{color:#fff;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.attach-chip .an small{color:var(--muted);font-size:10.5px}
+.attach-chip .ax{background:rgba(255,255,255,.1);border:none;color:#ddd;width:22px;height:22px;border-radius:50%;cursor:pointer;flex-shrink:0}
+.attach-prev{flex-basis:100%;margin:0;max-height:110px;overflow:auto;background:rgba(0,0,0,.35);border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:8px 10px;font:11px/1.45 var(--font-code);color:#b8c1d8;white-space:pre-wrap;word-break:break-all}
+.tb-btn{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);color:#d5dbea;border-radius:8px;padding:4px 9px;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap;flex-shrink:0;font-family:inherit}
+.tb-btn:disabled{opacity:.38}
+#tabName{flex:1;min-width:0}
+.tab-lang{margin-left:0!important}
+@media (max-width:520px){.tab-lang{display:none}}
+
+/* ================= v2: tools row, error marks, fix panel, diff, suggestions, confirm, perf ================= */
+html,body{overscroll-behavior:none;-webkit-tap-highlight-color:transparent}
+button{touch-action:manipulation}
+body.busy #aurora i,body.busy #newBtn::after{animation-play-state:paused}
+body.perf #aurora{display:none}
+body.perf .cube,body.perf .cube-scene::before,body.perf #newBtn::after,body.perf .brand,body.perf .key-x{animation:none!important}
+body.perf #topbar::after{animation:none!important}
+body.perf .script-item.enter{animation:none}
+.sb-foot{display:flex;flex-direction:column;gap:6px;padding:8px 10px calc(8px + env(safe-area-inset-bottom,0px));border-top:1px solid rgba(255,255,255,.06)}
+.mini-toggle{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);color:#aab3cc;border-radius:8px;padding:6px 8px;font-size:11px;text-align:left;cursor:pointer;font-family:inherit}
+.mini-toggle.on{background:rgba(76,175,80,.16);border-color:rgba(76,175,80,.45);color:#8ee59a}
+#fpsBadge{display:none;position:fixed;top:calc(6px + env(safe-area-inset-top,0px));right:8px;z-index:200;background:rgba(0,0,0,.65);color:#7dffb0;font:700 11px var(--font-code);padding:3px 8px;border-radius:8px;pointer-events:none}
+#editorTools{display:flex;gap:6px;padding:6px 10px;flex-shrink:0;overflow-x:auto;scrollbar-width:none;background:rgba(255,255,255,.02);border-bottom:1px solid rgba(255,255,255,.05)}
+#editorTools::-webkit-scrollbar{display:none}
+.tb-btn.hot{background:linear-gradient(150deg,rgba(255,90,90,.28),rgba(255,140,90,.16));border-color:rgba(255,100,100,.5);color:#ffd0d0}
+.tb-btn.danger{color:#ff9d96;border-color:rgba(255,100,90,.35);margin-left:auto}
+#errLayer{position:absolute;left:0;top:0;pointer-events:none;z-index:0}
+.err-bar{position:absolute;left:0;top:0;background:linear-gradient(90deg,rgba(255,64,64,.3),rgba(255,64,64,.1));border-left:3px solid #ff4040;box-shadow:inset 0 -1px 0 rgba(255,64,64,.55);animation:errPulse 1s ease-in-out 3}
+@keyframes errPulse{50%{opacity:.45}}
+#issueBar{cursor:pointer}
+/* fix panel */
+#fixPanel{position:fixed;left:0;right:0;bottom:0;max-height:46vh;display:none;flex-direction:column;z-index:110;background:linear-gradient(160deg,#2a2a32,#1b1b21);border-top:1px solid #444452;border-radius:18px 18px 0 0;box-shadow:0 -12px 40px rgba(0,0,0,.55);padding-bottom:env(safe-area-inset-bottom,0px)}
+#fixPanel.show{display:flex;animation:sheetUp .22s ease-out}
+#fixHead{display:flex;align-items:center;justify-content:space-between;padding:12px 14px 8px;color:#fff;font-size:14px}
+#fixHead button{background:rgba(255,255,255,.08);border:none;color:#ddd;width:28px;height:28px;border-radius:50%;cursor:pointer}
+#fixBody{overflow-y:auto;padding:0 12px 12px;display:flex;flex-direction:column;gap:6px;overscroll-behavior:contain}
+.fx-scan{display:flex;align-items:center;gap:8px;font-size:12px;color:#9fd8ff;background:rgba(79,195,247,.1);border-radius:10px;padding:8px 10px}
+.fx-scan button{margin-left:auto;background:rgba(255,255,255,.1);border:none;color:#fff;border-radius:8px;padding:3px 10px;font-size:11px;cursor:pointer}
+.fx-spin{width:12px;height:12px;border-radius:50%;border:2px solid rgba(255,255,255,.25);border-top-color:#4fc3f7;animation:spin .8s linear infinite;display:inline-block;flex-shrink:0}
+@keyframes spin{to{transform:rotate(360deg)}}
+.fx-issue{display:flex;gap:8px;align-items:flex-start;padding:9px 10px;border-radius:10px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);cursor:pointer;font-size:12.5px;color:#e6e9f5}
+.fx-issue.sel{background:rgba(255,64,64,.12);border-color:rgba(255,90,90,.45)}
+.fx-ln{flex-shrink:0;background:rgba(255,64,64,.25);color:#ffb3b0;font-weight:800;font-size:11px;border-radius:8px;padding:2px 7px}
+.fx-fix{margin-left:12px;padding:9px 11px;border-radius:10px;background:linear-gradient(90deg,rgba(124,77,255,.22),rgba(79,195,247,.08));border:1px solid rgba(124,77,255,.4);cursor:pointer;display:flex;flex-direction:column;gap:3px}
+.fx-ft{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:13px;color:#fff}
+.fx-fix small{font-size:11.5px;color:#b9c1d9;line-height:1.4}
+.fx-fix em{font-size:10.5px;color:#8fd4ff;font-style:normal}
+.fx-badge{font-size:10px;font-weight:800;border-radius:9px;padding:2px 8px;white-space:nowrap}
+.fx-badge.ok{background:rgba(76,175,80,.2);color:#7fe08a}.fx-badge.warn{background:rgba(255,170,60,.2);color:#ffc36b}
+.fx-none{margin-left:12px;font-size:12px;color:#9aa3bd;padding:6px 2px}
+.fx-none button{background:rgba(255,255,255,.08);border:none;color:#fff;border-radius:8px;padding:3px 9px;font-size:11px;cursor:pointer;margin-left:6px}
+.fx-back{align-self:flex-start;background:none;border:none;color:#8fd4ff;font-size:12.5px;cursor:pointer;padding:2px 0}
+.fx-dtitle{display:flex;flex-direction:column;gap:2px;font-size:12px;color:#b9c1d9}.fx-dtitle b{color:#fff;font-size:13.5px}
+.fx-diff{overflow:auto;background:rgba(0,0,0,.4);border:1px solid rgba(255,255,255,.08);border-radius:10px;font:12px/1.55 var(--font-code);max-height:24vh}
+.df{display:flex;white-space:pre;min-width:max-content;color:#d6deeb}
+.df .dn{width:34px;text-align:right;padding-right:8px;color:#5a6580;flex-shrink:0;user-select:none}
+.df .dg{width:14px;flex-shrink:0;font-weight:800}
+.df.add{background:rgba(76,175,80,.17)}.df.add .dg{color:#7fe08a}
+.df.del{background:rgba(255,64,64,.17)}.df.del .dg{color:#ff8d88}
+.df code{font:inherit}
+.fx-acts{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.fx-apply{background:linear-gradient(150deg,#66d17a,#3f9d51);border:none;color:#06260d;font-weight:800;border-radius:10px;padding:9px 16px;font-size:13px;cursor:pointer;box-shadow:0 3px 0 #276b34}
+/* suggestions */
+#suggestBar{display:none;margin-bottom:8px}
+#suggestBar.show{display:block}
+#suggestHead{display:flex;justify-content:space-between;align-items:center;font-size:11.5px;color:#c9b8ff;margin-bottom:6px}
+#suggestHead button{background:none;border:none;color:#8a92a8;cursor:pointer;font-size:13px}
+#suggestChips{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px}
+#suggestChips::-webkit-scrollbar{display:none}
+.sg-chip{flex-shrink:0;background:linear-gradient(150deg,rgba(124,77,255,.3),rgba(79,195,247,.14));border:1px solid rgba(124,77,255,.5);color:#eef0fb;border-radius:14px;padding:7px 12px;font-size:12px;cursor:pointer;white-space:nowrap;font-family:inherit}
+.sg-chip:active{transform:scale(.96)}
+.sg-load{display:inline-flex;align-items:center;gap:8px;font-size:12px;color:#9fd8ff}
+/* confirm dialog */
+#confirmSheet{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;z-index:130;padding:20px}
+#confirmSheet.show{display:flex}
+#confirmCard{width:100%;max-width:340px;background:linear-gradient(160deg,#2b2b33,#1b1b21);border:1px solid #454553;border-radius:18px;padding:18px 16px 14px;box-shadow:0 20px 60px rgba(0,0,0,.6);animation:sheetUp .2s ease-out}
+#confirmTitle{font-size:15px;font-weight:800;color:#fff;margin-bottom:8px}
+#confirmMsg{font-size:12.5px;color:#b3bbd2;line-height:1.5;margin-bottom:14px}
+#confirmRow{display:flex;gap:8px}
+.cf-btn{flex:1;padding:10px;border-radius:11px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.07);color:#e8ebf5;font-weight:700;font-size:13px;cursor:pointer;font-family:inherit}
+.cf-btn.danger{background:linear-gradient(150deg,#ff7b7b,#e14b4b);border:none;color:#fff;box-shadow:0 3px 0 #9c2626}
+</style>
+</head>
+<body>
+<div id="aurora"><i></i><i></i><i></i></div>
+<div id="app">
+  <div id="sidebar">
+    <div class="sb-head"><span class="brand">◆ Luau AI Studio</span></div>
+    <button id="newBtn">+ Tạo mới</button>
+    <div id="scriptList"></div>
+    <div class="sb-foot"><button id="perfBtn" class="mini-toggle" type="button"></button><button id="fpsBtn" class="mini-toggle" type="button"></button></div>
+  </div>
+  <div id="main">
+    <div id="topbar">
+      <button id="hamburger">☰</button>
+      <input id="scriptName" placeholder="Tên script" disabled>
+      <button id="previewBtn" title="Xem minh hoạ">▶</button>
+      <button id="copyBtn" title="Copy code">⧉</button>
+      <span id="status" class="status-empty"><span id="aiOrb"></span><span id="statusText">Chưa có script</span></span>
+    </div>
+    <div id="welcome"><div id="welcomeCard" data-tilt>
+      <div class="cube-scene"><div class="cube"><i></i><i></i><i></i><i></i><i></i><i></i></div></div>
+      <div><b>Luau AI Studio</b></div>
+      <div style="max-width:280px">Nhấn "+ Tạo mới" rồi mô tả script Luau bạn muốn — AI sẽ viết code chuyên nghiệp, tối ưu, không dùng cách viết cơ bản.</div>
+</div>
+    </div>
+    <div id="editorArea" style="display:none;flex:1;flex-direction:column;min-height:0">
+      <div id="editorTab"><span class="tab-dot"></span><span id="tabName">script.luau</span><span class="tab-lang">Luau</span></div>
+      <div id="editorTools"><button id="findBtn" class="tb-btn hot" type="button">🔍 Tìm lỗi</button><button id="clearCmBtn" class="tb-btn" type="button" title="Xoá các dòng comment --">🧹 Xoá comment</button><button id="undoBtn" class="tb-btn" type="button" title="Hoàn trả" disabled>↩ Hoàn trả</button><button id="delBtn" class="tb-btn danger" type="button">🗑 Xoá project</button></div>
+      <div id="editorWrap">
+        <div id="lineNums">1</div>
+        <div id="editorScroll">
+          <div id="errLayer"></div>
+          <div id="curLine"></div>
+          <pre id="highlight"></pre>
+          <textarea id="codeArea" spellcheck="false" autocapitalize="off" autocomplete="off"></textarea>
+        </div>
+      </div>
+      <div id="issueBar"></div>
+      <div id="editorMeta"><span>◆ Luau</span><span id="metaPos">Ln 1, Col 1</span><span class="sp"></span><span id="metaCount">0 dòng</span></div>
+    </div>
+    <div id="promptBar">
+      <div id="suggestBar"><div id="suggestHead"><span>💡 Gợi ý nâng cấp script — chạm để AI làm</span><button id="suggestX" type="button">✕</button></div><div id="suggestChips"></div></div>
+      <div id="promptTop"><button id="styleBtn" type="button"></button><div id="attachList"></div></div>
+      <div id="promptRow">
+        <textarea id="promptInput" rows="1" placeholder="Mô tả tính năng muốn thêm hoặc script muốn tạo..."></textarea>
+        <button id="sendBtn">➤</button>
+      </div>
+      <div id="hint">AI sẽ viết/bổ sung trực tiếp vào script đang mở. Dán script dài sẽ tự gói thành tệp .txt.</div>
+    </div>
+  </div>
+</div>
+<div id="toast"></div>
+
+<div id="confirmSheet"><div id="confirmCard"><div id="confirmTitle"></div><div id="confirmMsg"></div><div id="confirmRow"><button id="confirmNo" class="cf-btn" type="button">Huỷ</button><button id="confirmYes" class="cf-btn" type="button">Đồng ý</button></div></div></div>
+
+<div id="fixPanel"><div id="fixHead"><b id="fixTitle">🔍 Tìm lỗi</b><button id="fixClose" type="button">✕</button></div><div id="fixBody"></div></div>
+<div id="fpsBadge"></div>
+
+<div id="styleSheet"><div id="styleCard"><div id="styleTitle">Chọn phong cách viết code</div><div id="styleList"></div></div></div>
+
+<div id="choiceSheet">
+  <div id="choiceCard">
+    <div id="choiceTitle">Bật/tắt tính năng này bằng cách nào?</div>
+    <div id="choiceRow">
+      <button class="choice-btn" data-mode="keybind"><span class="ci">⌨</span><b>Toggle Keybind</b><small>Nhấn phím để bật/tắt</small></button>
+      <button class="choice-btn" data-mode="button"><span class="ci">🔘</span><b>Toggle Button</b><small>Nút bấm trên màn hình</small></button>
+    </div>
+    <button id="choiceSkip">Không cần toggle</button>
+  </div>
+</div>
+
+<div id="previewOverlay">
+  <div id="previewCard">
+    <div id="previewHead">
+      <span>👁 Minh hoạ script</span>
+      <button id="previewClose">✕</button>
+    </div>
+    <div id="previewBody"></div>
+    <div id="previewFoot">Đây là minh hoạ trực quan dựng từ code, không phải chạy thật trong Roblox.</div>
+  </div>
+</div>
+
+<script>
+const STORAGE_KEY = 'luau_ai_scripts_v1';
+let scripts = [];
+let activeId = null;
+let sample = null;
+
+function loadScripts(){
+  try{ scripts = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); }catch(e){ scripts = []; }
+}
+function saveScripts(){
+  try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(scripts)); }catch(e){}
+}
+function uid(){ return 's_' + Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
+
+let toastTimer = null;
+function toast(msg, kind){
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = kind === 'info' ? 'info show' : 'show';
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>{ el.classList.remove('show'); }, 3800);
+}
+
+function renderList(){
+  const list = document.getElementById('scriptList');
+  list.innerHTML = '';
+  if(scripts.length === 0){
+    const d = document.createElement('div');
+    d.className = 'empty-hint';
+    d.textContent = 'Chưa có script nào. Nhấn "+ Tạo mới" để bắt đầu.';
+    list.appendChild(d);
+    return;
+  }
+  scripts.forEach(s=>{
+    const item = document.createElement('div');
+    item.className = 'script-item' + (s.id===activeId?' active':'') + (s.id===lastCreatedId?' enter':'');
+    if(s.id===lastCreatedId) lastCreatedId = null;
+    item.innerHTML = '<span class="dot"></span><span class="nm"></span><span class="del">✕</span>';
+    item.querySelector('.nm').textContent = s.name;
+    item.addEventListener('click', (e)=>{ if(e.target.classList.contains('del')) return; selectScript(s.id); });
+    item.querySelector('.del').addEventListener('click', (e)=>{ e.stopPropagation(); deleteScript(s.id); });
+    list.appendChild(item);
+  });
+}
+
+function selectScript(id){
+  activeId = id;
+  renderList();
+  renderActive();
+}
+
+let lastCreatedId = null;
+function createScript(name){
+  const s = { id: uid(), name: name || ('Script ' + (scripts.length+1)), code: '', history: [] };
+  scripts.push(s);
+  saveScripts();
+  lastCreatedId = s.id;
+  activeId = s.id;
+  renderList();
+  renderActive();
+  document.getElementById('promptInput').focus();
+}
+
+function currentScript(){ return scripts.find(s=>s.id===activeId); }
+
+function renderActive(){
+  const s = currentScript();
+  updateUndoBtn();
+  clearErrMarks(); byId('fixPanel').classList.remove('show');
+  renderSuggest(s && s.sugg ? s.sugg : []);
+  const welcome = document.getElementById('welcome');
+  const editorArea = document.getElementById('editorArea');
+  const nameInput = document.getElementById('scriptName');
+  if(!s){
+    welcome.style.display = 'flex';
+    editorArea.style.display = 'none';
+    nameInput.value = '';
+    nameInput.disabled = true;
+    setStatus('empty');
+    return;
+  }
+  welcome.style.display = 'none';
+  editorArea.style.display = 'flex';
+  nameInput.disabled = false;
+  nameInput.value = s.name;
+  document.getElementById('tabName').textContent = (s.name || 'script') + '.luau';
+  document.getElementById('codeArea').value = s.code;
+  refreshEditor();
+}
+
+document.getElementById('scriptName').addEventListener('input', (e)=>{
+  const s = currentScript(); if(!s) return;
+  s.name = e.target.value || 'Untitled';
+  document.getElementById('tabName').textContent = s.name + '.luau';
+  saveScripts(); renderList();
+});
+
+/* ---------- editor: highlight + line numbers ---------- */
+const KEYWORDS = ['and','break','do','else','elseif','end','false','for','function','goto','if','in',
+  'local','nil','not','or','repeat','return','then','true','until','while','self','continue'];
+const kwRe = new RegExp('\\b(' + KEYWORDS.join('|') + ')\\b','g');
+
+function escapeHtml(str){
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+const KW_SET = new Set(KEYWORDS);
+const BUILTINS = new Set(['game','workspace','script','Instance','Enum','math','string','table','task','os','coroutine','buffer','bit32','utf8','debug',
+  'Vector3','Vector2','CFrame','Color3','UDim2','UDim','TweenInfo','Random','Ray','Rect','Region3','BrickColor','NumberRange','NumberSequence','ColorSequence',
+  'print','warn','error','pcall','xpcall','ipairs','pairs','next','type','typeof','tostring','tonumber','select','require','assert','setmetatable','getmetatable',
+  'wait','spawn','delay','tick','time','unpack','rawget','rawset','rawequal','rawlen','newproxy']);
+const RE_LCM = /--\[(=*)\[/y, RE_LST = /\[(=*)\[/y, RE_WORD = /[A-Za-z_][A-Za-z0-9_]*/y,
+  RE_NUM = /(?:0[xX][0-9a-fA-F_]+|0[bB][01_]+|\d[\d_]*(?:\.\d*)?(?:[eE][+-]?\d+)?|\.\d+)/y,
+  RE_WS = /[ \t\r\n]+/y, RE_OP = /[=~<>+\-*\/%^#&|?]+/y, RE_PN = /[(){}\[\],;.:]+/y;
+function stickyAt(re, str, i){ re.lastIndex = i; return re.exec(str); }
+
+// lite = fast pass used while the AI is streaming (only comments/strings/keywords/numbers)
+function highlight(code, lite, info){
+  let out = '', i = 0, lastWord = '', prev = '', typeNext = false;
+  const n = code.length;
+  const put = (cls, t)=>{ out += cls ? '<span class="' + cls + '">' + escapeHtml(t) + '</span>' : escapeHtml(t); };
+  while(i < n){
+    const c = code[i];
+    let m;
+    if((m = stickyAt(RE_WS, code, i))){
+      if(info){ const k = m[0].lastIndexOf('\n'); if(k >= 0){ info.bIdx = i + k + 1; info.bLen = out.length + k + 1; } }
+      out += m[0]; i += m[0].length; continue;
+    }
+    if(c === '-' && code[i+1] === '-'){
+      let end;
+      const lc = stickyAt(RE_LCM, code, i);
+      if(lc){ const close = ']' + lc[1] + ']'; const e = code.indexOf(close, i + lc[0].length); end = e === -1 ? n : e + close.length; }
+      else { const e = code.indexOf('\n', i); end = e === -1 ? n : e; }
+      put('cm', code.slice(i, end)); i = end; lastWord = ''; continue;
+    }
+    if(c === '['){
+      const ls = stickyAt(RE_LST, code, i);
+      if(ls){ const close = ']' + ls[1] + ']'; const e = code.indexOf(close, i + ls[0].length); const end = e === -1 ? n : e + close.length;
+        put('str', code.slice(i, end)); i = end; prev = ']'; lastWord = ''; continue; }
+    }
+    if(c === '"' || c === "'" || c === '`'){
+      let j = i + 1;
+      while(j < n){ const d = code[j]; if(d === '\\'){ j += 2; continue; } if(d === c){ j++; break; } if(d === '\n' && c !== '`') break; j++; }
+      j = Math.min(j, n);
+      put('str', code.slice(i, j)); i = j; prev = '"'; lastWord = ''; continue;
+    }
+    if((m = stickyAt(RE_WORD, code, i))){
+      const w = m[0], after = code[i + w.length];
+      let cls = '';
+      if(KW_SET.has(w)) cls = (w === 'true' || w === 'false' || w === 'nil') ? 'lit' : (w === 'self' ? 'sf' : 'kw');
+      else if(!lite){
+        if(lastWord === 'function') cls = 'fd';
+        else if(typeNext || (prev === ':' && after !== '(') || (lastWord === 'type' && after !== '(')) cls = 'ty';
+        else if(prev === '.') cls = after === '(' ? 'fn' : 'pr';
+        else if((w === 'type' || w === 'export') && after !== '(') cls = 'kw';
+        else if(BUILTINS.has(w)) cls = 'bi';
+        else if(after === '(' || (prev === ':' && after === '(')) cls = 'fn';
+        else if(/^[A-Z][A-Z0-9_]+$/.test(w)) cls = 'cn';
+      }
+      typeNext = false;
+      put(cls, w); i += w.length; lastWord = w; prev = 'w'; continue;
+    }
+    if((c >= '0' && c <= '9') || (c === '.' && code[i+1] >= '0' && code[i+1] <= '9')){
+      m = stickyAt(RE_NUM, code, i);
+      if(m){ put('num', m[0]); i += m[0].length; prev = '0'; lastWord = ''; continue; }
+    }
+    if(c === '.' && code[i+1] === '.'){
+      let j = i; while(code[j] === '.') j++;
+      put(lite ? '' : 'op', code.slice(i, j)); i = j; prev = 'o'; lastWord = ''; continue;
+    }
+    if((m = stickyAt(RE_OP, code, i))){
+      put(lite ? '' : 'op', m[0]); i += m[0].length; prev = 'o'; lastWord = '';
+      if(m[0].endsWith('->')) typeNext = true;
+      continue;
+    }
+    if((m = stickyAt(RE_PN, code, i))){
+      put(lite ? '' : 'pn', m[0]); i += m[0].length; prev = m[0][m[0].length-1]; lastWord = '';
+      if(m[0].includes('::')) typeNext = true;
+      continue;
+    }
+    put('', c); i++; prev = ''; lastWord = '';
+  }
+  if(!lite) out = out.replace(/^([\t ]+)(?=[^\t \n])/gm, '<span class="ig">$1</span>');
+  return out;
+}
+
+function updateLineNumbers(code){
+  const lines = code.split('\n').length;
+  let s = '';
+  for(let n=1;n<=lines;n++) s += n + '\n';
+  document.getElementById('lineNums').textContent = s;
+  document.getElementById('metaCount').textContent = lines + ' dòng · ' + code.length + ' ký tự';
+}
+
+function updateCursor(){
+  const bar = document.getElementById('curLine');
+  const ca = document.getElementById('codeArea'), hl = document.getElementById('highlight');
+  if(streaming || !currentScript()){ bar.style.display = 'none'; return; }
+  const before = ca.value.slice(0, ca.selectionStart || 0);
+  const ln = before.split('\n').length, col = (ca.selectionStart || 0) - before.lastIndexOf('\n');
+  const lh = parseFloat(getComputedStyle(hl).lineHeight) || 20.8;
+  bar.style.display = 'block'; bar.style.height = lh + 'px'; bar.style.width = hl.offsetWidth + 'px';
+  bar.style.transform = 'translateY(' + (14 + (ln-1)*lh) + 'px)';
+  document.getElementById('metaPos').textContent = 'Ln ' + ln + ', Col ' + col;
+}
+
+function refreshEditor(skipCheck){
+  const code = document.getElementById('codeArea').value;
+  document.getElementById('highlight').innerHTML = highlight(code) + '\n';
+  updateLineNumbers(code);
+  if(!skipCheck) checkSyntax(code);
+  updateCursor();
+}
+
+/* ---------- smooth typewriter streaming ---------- */
+let autoFollow = true;
+let streamTarget = '';
+let streamDisplayed = '';
+let streamRAF = null;
+let streaming = false;
+
+function scrollEditorToBottom(){
+  const el = document.getElementById('editorScroll');
+  el.scrollTop = el.scrollHeight;
+}
+
+document.getElementById('editorScroll').addEventListener('scroll', ()=>{
+  const el = document.getElementById('editorScroll');
+  document.getElementById('lineNums').scrollTop = el.scrollTop;
+  autoFollow = (el.scrollHeight - el.scrollTop - el.clientHeight) < 48;
+});
+document.getElementById('codeArea').addEventListener('scroll', function(){
+  document.getElementById('highlight').parentElement.scrollTop = this.scrollTop;
+  document.getElementById('editorScroll').scrollTop = this.scrollTop;
+  document.getElementById('editorScroll').scrollLeft = this.scrollLeft;
+});
+document.getElementById('codeArea').addEventListener('keydown', function(e){
+  if(e.key === 'Tab'){
+    e.preventDefault();
+    const start = this.selectionStart, end = this.selectionEnd;
+    this.value = this.value.slice(0,start) + '    ' + this.value.slice(end);
+    this.selectionStart = this.selectionEnd = start + 4;
+    this.dispatchEvent(new Event('input'));
+  }
+});
+
+/* ---------- syntax heuristic checker ---------- */
+function stripStringsAndComments(code){
+  let out = '';
+  let issues = [];
+  let i = 0; const n = code.length;
+  while(i < n){
+    let longCm = stickyAt(RE_LCM, code, i);
+    if(longCm){
+      const closeTag = ']' + longCm[1] + ']';
+      let end = code.indexOf(closeTag, i + longCm[0].length);
+      if(end === -1){ issues.push('Comment dạng --[[ ... ]] chưa được đóng'); end = n; } else { end += closeTag.length; }
+      i = end; continue;
+    }
+    if(code.startsWith('--', i)){
+      let end = code.indexOf('\n', i); end = end===-1?n:end; i = end; continue;
+    }
+    let longMatch = stickyAt(RE_LST, code, i);
+    if(longMatch){
+      const closeTag = ']' + longMatch[1] + ']';
+      let end = code.indexOf(closeTag, i+longMatch[0].length);
+      if(end === -1){ issues.push('Chuỗi dạng [[ ... ]] chưa được đóng'); end = n; } else { end += closeTag.length; }
+      i = end; continue;
+    }
+    if(code[i] === '"' || code[i] === "'"){
+      const quote = code[i]; let j = i+1; let closed = false;
+      while(j<n){
+        if(code[j]==='\\'){ j+=2; continue; }
+        if(code[j]===quote){ closed = true; j++; break; }
+        if(code[j]==='\n'){ break; } // Lua short strings can't span lines unescaped
+        j++;
+      }
+      if(!closed) issues.push('Chuỗi bắt đầu bằng dấu ' + quote + ' chưa được đóng đúng cách');
+      i = j; continue;
+    }
+    out += code[i]; i++;
+  }
+  return { clean: out, issues };
+}
+
+function setStatus(kind, text){
+  const el = document.getElementById('status');
+  const txt = document.getElementById('statusText');
+  const map = {
+    ok: ['status-ok', 'Working ✓'],
+    err: ['status-err', 'Lỗi cú pháp ✕'],
+    busy: ['status-busy', 'Đang xử lý...'],
+    empty: ['status-empty', 'Chưa có code']
+  };
+  const [cls, def] = map[kind] || map.empty;
+  el.className = cls;
+  document.body.classList.toggle('busy', kind === 'busy');
+  txt.textContent = text || def;
+}
+
+['keyup','click','focus','touchend','pointerup','select'].forEach(ev=>{
+  document.getElementById('codeArea').addEventListener(ev, ()=>requestAnimationFrame(updateCursor), { passive:true });
+});
+
+/* ---------- writing styles (dropdown) ---------- */
+const STYLES = [
+  { id:'pro', ic:'💼', name:'Chuyên nghiệp', desc:'Production-grade, type, module rõ ràng, dọn dẹp tài nguyên', note:'Chuyên nghiệp nhất: production-grade, type annotation, tổ chức module rõ ràng, xử lý lỗi, dọn dẹp tài nguyên.' },
+  { id:'ai', ic:'🤖', name:'AI', desc:'Có hệ thống: khối rõ ràng, type, comment tiêu đề mục', note:'Viết theo phong cách "AI chuẩn mực": cấu trúc theo từng khối (services → config → hàm → khởi tạo), có type annotation, comment tiêu đề mục ngắn, xử lý lỗi đầy đủ, đặt tên nhất quán, code sạch và có hệ thống.' },
+  { id:'human', ic:'🧑', name:'Người', desc:'Tự nhiên như lập trình viên thật viết tay', note:'Viết như một lập trình viên Roblox thật viết tay: tự nhiên, thực dụng, không over-engineer, không header comment dài dòng, comment ngắn ở chỗ cần, đặt tên biến quen thuộc, không rập khuôn kiểu AI, nhưng vẫn chạy đúng và ổn định.' },
+  { id:'short', ic:'⚡', name:'Ngắn gọn nhưng hoạt động', desc:'Ít dòng nhất có thể, bỏ boilerplate, vẫn chạy đúng', note:'Ngắn gọn nhưng hoạt động đầy đủ: số dòng ít nhất có thể, bỏ boilerplate và comment thừa, gộp logic hợp lý, không tách hàm khi không cần, không thêm tính năng ngoài yêu cầu.' },
+  { id:'perf', ic:'🚀', name:'Tối ưu hiệu năng', desc:'Chống lag: cache, throttle, dùng event thay polling', note:'Ưu tiên hiệu năng và chống lag: cache service/tham chiếu, tránh vòng lặp nặng mỗi frame, dùng event thay polling, throttle Heartbeat, tái sử dụng object, dọn dẹp connection.' },
+  { id:'safe', ic:'🛡', name:'An toàn & bền vững', desc:'Kiểm tra nil, pcall, xử lý respawn, dọn dẹp sạch', note:'Ưu tiên an toàn và bền vững: kiểm tra nil/IsA/đối tượng đã bị Destroy, pcall thao tác dễ lỗi, WaitForChild có timeout, xử lý respawn/đổi character, dọn dẹp sạch khi tắt.' },
+  { id:'oop', ic:'🧩', name:'Module / OOP', desc:'Class bằng metatable, .new, :Destroy()', note:'Ưu tiên module/OOP: tách class bằng metatable, constructor .new, method rõ ràng, :Destroy() dọn dẹp, trạng thái được đóng gói, dễ mở rộng.' },
+  { id:'cfg', ic:'⚙', name:'Dễ tuỳ chỉnh', desc:'Gom mọi giá trị chỉnh được vào bảng CONFIG', note:'Dễ tuỳ chỉnh: gom mọi giá trị chỉnh được (phím, màu, kích thước, tốc độ...) vào một bảng CONFIG ở đầu file, đặt tên rõ nghĩa.' },
+  { id:'ui', ic:'🎨', name:'Giao diện đẹp', desc:'UICorner, UIStroke, tween mượt, hiệu ứng hover/press', note:'Ưu tiên giao diện đẹp: bo góc UICorner, UIStroke/UIGradient hợp lý, TweenService mượt, bố cục cân đối, màu hài hoà, hiệu ứng hover/press.' },
+  { id:'mobile', ic:'📱', name:'Tương thích điện thoại', desc:'Nút lớn, dùng Activated, hỗ trợ cảm ứng', note:'Ưu tiên tương thích điện thoại: nút đủ lớn để chạm (tối thiểu 44px), bố cục theo Scale khi hợp lý, dùng Activated thay MouseButton1Click, hỗ trợ cả cảm ứng lẫn chuột.' },
+  { id:'debug', ic:'🧪', name:'Dễ debug', desc:'Log có tiền tố, biến DEBUG bật/tắt', note:'Dễ debug: log/warn có tiền tố [Tên script], biến DEBUG bật/tắt log, thông báo lỗi rõ ràng, hàm nhỏ dễ kiểm tra.' },
+  { id:'exact', ic:'🎯', name:'Đúng yêu cầu', desc:'Chỉ làm đúng điều được nhờ, không thêm thừa', note:'Đúng yêu cầu tuyệt đối: chỉ làm đúng điều được yêu cầu, không tự thêm tính năng, không thêm UI/config ngoài yêu cầu.' },
+  { id:'light', ic:'🪶', name:'Siêu nhẹ', desc:'Ít Instance, ít connection, bộ nhớ thấp', note:'Siêu nhẹ: dùng ít Instance và ít connection nhất, không tạo object thừa, không có vòng lặp nền không cần thiết, bộ nhớ thấp.' },
+  { id:'learn', ic:'📚', name:'Chú thích chi tiết', desc:'Giải thích từng khối bằng tiếng Việt', note:'Chú thích chi tiết bằng tiếng Việt: giải thích ngắn gọn mục đích từng khối/hàm để người đọc dễ hiểu và dễ chỉnh sửa, đặt tên biến rõ nghĩa.' },
+  { id:'nocmt', ic:'🧼', name:'Không comment', desc:'Code tự giải thích, không có dòng -- nào', note:'Không viết bất kỳ comment nào trong code (không dùng --), code tự giải thích qua tên biến và tên hàm.' }
+];
+const STYLE_KEY = 'luau_ai_style_v1';
+let styleId = 'pro';
+try{ const v = localStorage.getItem(STYLE_KEY); if(STYLES.some(x=>x.id === v)) styleId = v; }catch(e){}
+function curStyle(){ return STYLES.find(x=>x.id === styleId) || STYLES[0]; }
+function renderStyleBtn(){
+  const st = curStyle();
+  document.getElementById('styleBtn').innerHTML = '🎭 <span class="sb-k">Phong cách:</span> <b>' + st.ic + ' ' + escapeHtml(st.name) + '</b> <span class="sb-k">▾</span>';
+}
+function closeStyleSheet(){ document.getElementById('styleSheet').classList.remove('show'); }
+function openStyleSheet(){
+  const list = document.getElementById('styleList');
+  list.innerHTML = '';
+  STYLES.forEach(st=>{
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'style-item' + (st.id === styleId ? ' sel' : '');
+    b.innerHTML = '<span class="si">' + st.ic + '</span><span class="st"><b></b><small></small></span><span class="ck">✓</span>';
+    b.querySelector('b').textContent = st.name;
+    b.querySelector('small').textContent = st.desc;
+    b.addEventListener('click', ()=>{
+      styleId = st.id;
+      try{ localStorage.setItem(STYLE_KEY, styleId); }catch(e){}
+      renderStyleBtn(); closeStyleSheet();
+    });
+    list.appendChild(b);
+  });
+  document.getElementById('styleSheet').classList.add('show');
+}
+document.getElementById('styleBtn').addEventListener('click', openStyleSheet);
+document.getElementById('styleSheet').addEventListener('click', e=>{ if(e.target.id === 'styleSheet') closeStyleSheet(); });
+
+/* ---------- long paste -> compact .txt attachment (keeps the textbox light) ---------- */
+let attachments = [], attachSeq = 0, openAttachId = null;
+const PASTE_LINES = 25, PASTE_CHARS = 1500, ATTACH_MAX = 150000;
+function fmtSize(n){ return n < 1024 ? n + ' B' : (n/1024).toFixed(1) + ' KB'; }
+function renderAttach(){
+  const box = document.getElementById('attachList');
+  box.innerHTML = '';
+  attachments.forEach(a=>{
+    const chip = document.createElement('div');
+    chip.className = 'attach-chip';
+    chip.innerHTML = '<span>📄</span><span class="an"><b></b><small></small></span><button class="ax" type="button">✕</button>';
+    chip.querySelector('b').textContent = a.name;
+    chip.querySelector('small').textContent = fmtSize(a.text.length) + ' · ' + a.text.split('\n').length + ' dòng · chạm để xem';
+    chip.querySelector('.an').addEventListener('click', ()=>{ openAttachId = openAttachId === a.id ? null : a.id; renderAttach(); });
+    chip.querySelector('.ax').addEventListener('click', ()=>{ attachments = attachments.filter(x=>x.id !== a.id); if(openAttachId === a.id) openAttachId = null; renderAttach(); });
+    box.appendChild(chip);
+    if(openAttachId === a.id){
+      const pre = document.createElement('pre');
+      pre.className = 'attach-prev';
+      pre.textContent = a.text.slice(0, 700) + (a.text.length > 700 ? '\n… (còn ' + (a.text.length - 700) + ' ký tự)' : '');
+      box.appendChild(pre);
+    }
+  });
+}
+function clearAttachments(){ attachments = []; openAttachId = null; renderAttach(); }
+document.getElementById('promptInput').addEventListener('paste', e=>{
+  const t = (e.clipboardData || window.clipboardData).getData('text');
+  if(!t) return;
+  if(t.length > PASTE_CHARS || t.split('\n').length > PASTE_LINES){
+    e.preventDefault();
+    let txt = t;
+    if(txt.length > ATTACH_MAX){ txt = txt.slice(0, ATTACH_MAX); toast('Script quá dài, đã cắt còn ' + fmtSize(ATTACH_MAX)); }
+    attachSeq++;
+    attachments.push({ id: attachSeq, name: 'dan-script-' + attachSeq + '.txt', text: txt });
+    renderAttach();
+    toast('Đã gói script vừa dán vào tệp .txt để đỡ lag', 'info');
+  }
+});
+
+/* ---------- clear comments + restore ---------- */
+function removeComments(code){
+  let out = '', i = 0, removed = 0; const n = code.length;
+  while(i < n){
+    const c = code[i];
+    if(c === '-' && code[i+1] === '-'){
+      if(code[i+2] === '!'){ const e = code.indexOf('\n', i); const end = e === -1 ? n : e; out += code.slice(i, end); i = end; continue; } // keep --!strict etc.
+      let end; const lc = stickyAt(RE_LCM, code, i);
+      if(lc){ const close = ']' + lc[1] + ']'; const e = code.indexOf(close, i + lc[0].length); end = e === -1 ? n : e + close.length; }
+      else { const e = code.indexOf('\n', i); end = e === -1 ? n : e; }
+      out += '\u0001'; removed++; i = end; continue;
+    }
+    if(c === '['){
+      const ls = stickyAt(RE_LST, code, i);
+      if(ls){ const close = ']' + ls[1] + ']'; const e = code.indexOf(close, i + ls[0].length); const end = e === -1 ? n : e + close.length; out += code.slice(i, end); i = end; continue; }
+    }
+    if(c === '"' || c === "'" || c === '`'){
+      let j = i + 1;
+      while(j < n){ const d = code[j]; if(d === '\\'){ j += 2; continue; } if(d === c){ j++; break; } if(d === '\n' && c !== '`') break; j++; }
+      j = Math.min(j, n); out += code.slice(i, j); i = j; continue;
+    }
+    out += c; i++;
+  }
+  const res = [];
+  for(const l of out.split('\n')){
+    if(l.includes('\u0001')){ const t = l.replace(/\u0001/g, '').replace(/[ \t]+$/, ''); if(t.trim() === '') continue; res.push(t); }
+    else res.push(l);
+  }
+  return { code: res.join('\n').replace(/\n{3,}/g, '\n\n').trim(), removed };
+}
+function updateUndoBtn(){
+  const s = currentScript();
+  document.getElementById('undoBtn').disabled = !(s && s.prev != null);
+  document.getElementById('clearCmBtn').disabled = !(s && s.code);
+}
+function applyCode(s, code){
+  s.code = code; saveScripts();
+  document.getElementById('codeArea').value = code;
+  refreshEditor(); updateUndoBtn();
+}
+document.getElementById('clearCmBtn').addEventListener('click', ()=>{
+  const s = currentScript(); if(!s || !s.code || streaming) return;
+  const r = removeComments(s.code);
+  if(!r.removed){ toast('Không có comment nào để xoá', 'info'); return; }
+  s.prev = s.code;
+  applyCode(s, r.code);
+  toast('Đã xoá ' + r.removed + ' comment — bấm ↩ Hoàn trả nếu muốn lấy lại', 'info');
+});
+document.getElementById('undoBtn').addEventListener('click', ()=>{
+  const s = currentScript(); if(!s || s.prev == null || streaming) return;
+  const restore = s.prev;
+  s.prev = s.code;   // swap: pressing again goes back to the version you just left
+  applyCode(s, restore);
+  toast('Đã hoàn trả', 'info');
+});
+
+/* =====================================================================
+   Performance: incremental streaming renderer (only the unfinished tail is re-highlighted)
+   ===================================================================== */
+const byId = id => document.getElementById(id);
+function countNl(str){ let c = 0, k = -1; while((k = str.indexOf('\n', k + 1)) !== -1) c++; return c; }
+let stableEl = null, tailEl = null, stableCode = '', stableLines = 0, lnText = null, lnCount = 0, lastTotal = 0, lastStreamTs = 0;
+
+function beginStreaming(){
+  streaming = true;
+  streamTarget = ''; streamDisplayed = '';
+  stableEl = tailEl = null; stableCode = ''; stableLines = 0; lnText = null; lnCount = 0; lastTotal = 0; lastStreamTs = 0;
+  autoFollow = true;
+  byId('codeArea').readOnly = true;
+  byId('curLine').style.display = 'none';
+  if(!streamRAF) streamRAF = requestAnimationFrame(streamTick);
+}
+function setStreamTarget(text){ streamTarget = text; }
+function endStreaming(finalText){
+  streaming = false;
+  if(streamRAF){ cancelAnimationFrame(streamRAF); streamRAF = null; }
+  stableEl = tailEl = null; lnText = null;
+  const ca = byId('codeArea');
+  ca.readOnly = false;
+  ca.value = finalText;
+  refreshEditor();
+  if(autoFollow) scrollEditorToBottom();
+}
+// runs at the display's native refresh rate (60/90/120/144/240 Hz) - no artificial frame cap
+function streamTick(ts){
+  streamRAF = null;
+  if(!streaming) return;
+  streamRAF = requestAnimationFrame(streamTick);
+  const dt = Math.min(64, Math.max(1, ts - (lastStreamTs || ts)));
+  lastStreamTs = ts;
+  const gap = streamTarget.length - streamDisplayed.length;
+  if(gap > 0){
+    const step = Math.max(1, Math.min(Math.ceil(gap * (1 - Math.exp(-dt / 90))), Math.ceil(dt * 3)));
+    streamDisplayed = streamTarget.slice(0, streamDisplayed.length + step);
+    renderStreamFrame(streamDisplayed);
+  } else if(gap < 0){
+    streamDisplayed = streamTarget;
+    renderStreamFrame(streamDisplayed);
+  }
+}
+function renderStreamFrame(text){
+  const hl = byId('highlight');
+  if(!stableEl || !stableEl.isConnected){
+    hl.innerHTML = '<span id="hlStable"></span><span id="hlTail"></span>';
+    stableEl = byId('hlStable'); tailEl = byId('hlTail');
+    stableCode = ''; stableLines = 0; lnText = null;
+  }
+  if(!text.startsWith(stableCode)){ stableEl.innerHTML = ''; stableCode = ''; stableLines = 0; lnText = null; }
+  const tailSrc = text.slice(stableCode.length);
+  const info = { bIdx: 0, bLen: 0 };
+  const html = highlight(tailSrc, true, info);
+  let tailHtml = html;
+  if(info.bIdx > 0){
+    stableEl.insertAdjacentHTML('beforeend', html.slice(0, info.bLen));
+    const chunk = tailSrc.slice(0, info.bIdx);
+    stableCode += chunk; stableLines += countNl(chunk);
+    tailHtml = html.slice(info.bLen);
+  }
+  tailEl.innerHTML = tailHtml + '<span class="type-cursor">&nbsp;</span>';
+  const total = stableLines + countNl(tailSrc.slice(info.bIdx)) + 1;
+  const ln = byId('lineNums');
+  if(!lnText || lnText.parentNode !== ln){ ln.textContent = ''; lnText = document.createTextNode(''); ln.appendChild(lnText); lnCount = 0; }
+  if(total > lnCount){ let add = ''; for(let k = lnCount + 1; k <= total; k++) add += k + '\n'; lnText.appendData(add); lnCount = total; }
+  byId('metaCount').textContent = total + ' dòng · ' + text.length + ' ký tự';
+  if(autoFollow && total !== lastTotal) scrollEditorToBottom();
+  lastTotal = total;
+}
+
+/* input: batch highlight into one frame, debounce save + syntax check */
+let refreshRaf = 0, saveTimer = 0, checkTimer = 0;
+byId('codeArea').addEventListener('input', e=>{
+  const s = currentScript(); if(!s) return;
+  s.code = e.target.value;
+  clearErrMarks();
+  clearTimeout(saveTimer); saveTimer = setTimeout(saveScripts, 450);
+  if(!refreshRaf) refreshRaf = requestAnimationFrame(()=>{
+    refreshRaf = 0;
+    refreshEditor(true);
+    clearTimeout(checkTimer); checkTimer = setTimeout(()=>checkSyntax(byId('codeArea').value), 300);
+  });
+});
+
+/* =====================================================================
+   Accurate, line-aware syntax check (handles Luau if-expressions, repeat/until, brackets)
+   ===================================================================== */
+const EXPR_PREV_RE = /^(?:[=~<>+\-*\/%^#&|?,({\[]+|\.\.+|return|and|or|not)$/;
+function findErrors(code){
+  const errs = [], n = code.length, blocks = [], brackets = [];
+  let i = 0, line = 1, prevTok = '', exprWait = 0, afterExprElse = false;
+  const OPEN = { ')':'(', ']':'[', '}':'{' };
+  while(i < n){
+    const c = code[i];
+    if(c === '\n'){ line++; i++; continue; }
+    if(c === ' ' || c === '\t' || c === '\r'){ i++; continue; }
+    const wasAfterElse = afterExprElse; afterExprElse = false;
+    if(c === '-' && code[i+1] === '-'){
+      const lc = stickyAt(RE_LCM, code, i);
+      if(lc){
+        const close = ']' + lc[1] + ']', e = code.indexOf(close, i + lc[0].length);
+        if(e === -1){ errs.push({ line, msg:'Comment nhiều dòng --[[ chưa được đóng bằng ]]' }); i = n; }
+        else { const end = e + close.length; line += countNl(code.slice(i, end)); i = end; }
+      } else { const e = code.indexOf('\n', i); i = e === -1 ? n : e; }
+      afterExprElse = wasAfterElse; continue;
+    }
+    if(c === '['){
+      const ls = stickyAt(RE_LST, code, i);
+      if(ls){
+        const close = ']' + ls[1] + ']', e = code.indexOf(close, i + ls[0].length);
+        if(e === -1){ errs.push({ line, msg:'Chuỗi [[ ]] chưa được đóng' }); i = n; }
+        else { const end = e + close.length; line += countNl(code.slice(i, end)); i = end; }
+        prevTok = 'str'; continue;
+      }
+    }
+    if(c === '"' || c === "'" || c === '`'){
+      let j = i + 1, closed = false; const startLine = line;
+      while(j < n){
+        const d = code[j];
+        if(d === '\\'){ if(code[j+1] === '\n') line++; j += 2; continue; }
+        if(d === c){ closed = true; j++; break; }
+        if(d === '\n'){ if(c === '`'){ line++; j++; continue; } break; }
+        j++;
+      }
+      if(!closed) errs.push({ line: startLine, msg:'Chuỗi mở bằng ' + c + ' chưa được đóng' });
+      i = Math.min(j, n); prevTok = 'str'; continue;
+    }
+    const wm = stickyAt(RE_WORD, code, i);
+    if(wm){
+      const w = wm[0]; i += w.length;
+      if(prevTok === '.' || prevTok === ':'){ prevTok = 'id'; continue; }
+      if(w === 'function' || w === 'do' || w === 'repeat') blocks.push({ t:w, line });
+      else if(w === 'if'){
+        if(EXPR_PREV_RE.test(prevTok) || (prevTok === 'else' && wasAfterElse)) exprWait++;
+        else blocks.push({ t:'if', line });
+      }
+      else if(w === 'else'){ if(exprWait > 0){ exprWait--; afterExprElse = true; } }
+      else if(w === 'end'){
+        const b = blocks.pop();
+        if(!b) errs.push({ line, msg:'`end` thừa — không có khối nào đang mở' });
+        else if(b.t === 'repeat') errs.push({ line, msg:'Khối `repeat` (dòng ' + b.line + ') phải đóng bằng `until`, không phải `end`' });
+      }
+      else if(w === 'until'){
+        const b = blocks.pop();
+        if(!b) errs.push({ line, msg:'`until` thừa — không có `repeat` nào đang mở' });
+        else if(b.t !== 'repeat'){ errs.push({ line, msg:'`until` không khớp — khối đang mở là `' + b.t + '` (dòng ' + b.line + ')' }); blocks.push(b); }
+      }
+      prevTok = w; continue;
+    }
+    if(c === '.' && code[i+1] === '.'){ let j = i; while(code[j] === '.') j++; i = j; prevTok = '..'; continue; }
+    if(c === ':' && code[i+1] === ':'){ i += 2; prevTok = ':'; continue; }
+    const om = stickyAt(RE_OP, code, i);
+    if(om){ i += om[0].length; prevTok = om[0]; continue; }
+    if(c === '(' || c === '[' || c === '{'){ brackets.push({ c, line }); prevTok = c; i++; continue; }
+    if(c === ')' || c === ']' || c === '}'){
+      const b = brackets.pop();
+      if(!b) errs.push({ line, msg:'Dấu ' + c + ' thừa — không có dấu mở tương ứng' });
+      else if(b.c !== OPEN[c]){ errs.push({ line, msg:'Dấu ' + c + ' không khớp với ' + b.c + ' mở ở dòng ' + b.line }); brackets.push(b); }
+      prevTok = c; i++; continue;
+    }
+    const nm = stickyAt(RE_NUM, code, i);
+    if(nm && nm[0].length){ i += nm[0].length; prevTok = 'num'; continue; }
+    prevTok = (c === '.' || c === ':' || c === ',' || c === ';') ? c : ''; i++;
+  }
+  blocks.forEach(b=>errs.push({ line:b.line, msg:'Thiếu `' + (b.t === 'repeat' ? 'until' : 'end') + '` để đóng khối `' + b.t + '` (mở ở dòng ' + b.line + ')' }));
+  brackets.forEach(b=>errs.push({ line:b.line, msg:'Dấu ' + b.c + ' mở ở dòng ' + b.line + ' chưa được đóng' }));
+  errs.sort((a, b)=>a.line - b.line);
+  return errs.slice(0, 12);
+}
+function checkSyntax(rawCode){
+  const bar = byId('issueBar');
+  if(!rawCode.trim()){ setStatus('empty'); bar.classList.remove('show'); return; }
+  const errs = findErrors(rawCode);
+  if(!errs.length){ setStatus('ok'); bar.classList.remove('show'); return; }
+  setStatus('err');
+  bar.textContent = '⚠ Dòng ' + errs[0].line + ': ' + errs[0].msg + (errs.length > 1 ? '  (+' + (errs.length - 1) + ' lỗi khác)' : '') + '  — chạm để tìm & sửa';
+  bar.classList.add('show');
+}
+byId('issueBar').addEventListener('click', ()=>byId('findBtn').click());
+
+/* =====================================================================
+   Red error marks + jump to line
+   ===================================================================== */
+let errLines = [];
+function lineH(){ return parseFloat(getComputedStyle(byId('highlight')).lineHeight) || 20.8; }
+function setErrMarks(lines){
+  errLines = lines.slice();
+  const layer = byId('errLayer'); layer.innerHTML = '';
+  const lh = lineH(), w = byId('highlight').offsetWidth;
+  lines.forEach(ln=>{
+    const d = document.createElement('div');
+    d.className = 'err-bar';
+    d.style.cssText = 'transform:translateY(' + (14 + (ln - 1) * lh) + 'px);height:' + lh + 'px;width:' + w + 'px';
+    layer.appendChild(d);
+  });
+}
+function clearErrMarks(){ if(errLines.length){ errLines = []; byId('errLayer').innerHTML = ''; } }
+function scrollToLine(ln){
+  const es = byId('editorScroll'), y = 14 + (ln - 1) * lineH();
+  let visH = es.clientHeight;
+  const panel = byId('fixPanel');
+  if(panel.classList.contains('show')){
+    const er = es.getBoundingClientRect(), pr = panel.getBoundingClientRect();
+    visH = Math.max(120, Math.min(es.clientHeight, pr.top - er.top));
+  }
+  autoFollow = false;
+  es.scrollTo({ top: Math.max(0, y - visH * 0.35), behavior: 'smooth' });
+}
+
+/* =====================================================================
+   Confirm dialog (custom - native confirm() is blocked in this sandbox) + delete project
+   ===================================================================== */
+function askConfirm(title, msg, okText, danger){
+  return new Promise(res=>{
+    const sh = byId('confirmSheet');
+    byId('confirmTitle').textContent = title; byId('confirmMsg').textContent = msg;
+    const yes = byId('confirmYes'); yes.textContent = okText || 'Đồng ý'; yes.classList.toggle('danger', !!danger);
+    sh.classList.add('show');
+    const done = v=>{ sh.classList.remove('show'); sh.onclick = null; res(v); };
+    yes.onclick = ()=>done(true); byId('confirmNo').onclick = ()=>done(false);
+    sh.onclick = e=>{ if(e.target === sh) done(false); };
+  });
+}
+async function deleteScript(id){
+  const s = scripts.find(x=>x.id === id); if(!s) return;
+  if(streaming) { toast('Đợi AI viết xong rồi hãy xoá nhé'); return; }
+  const lines = (s.code || '').split('\n').length;
+  const ok = await askConfirm('Xoá project "' + s.name + '"?',
+    (s.code ? lines + ' dòng code, ' : '') + 'toàn bộ lịch sử yêu cầu và gợi ý của project này sẽ bị xoá vĩnh viễn. Không thể hoàn tác.', '🗑 Xoá project', true);
+  if(!ok) return;
+  scripts = scripts.filter(x=>x.id !== id);
+  saveScripts();
+  if(activeId === id) activeId = scripts[0] ? scripts[0].id : null;
+  renderList(); renderActive();
+  toast('Đã xoá project', 'info');
+}
+byId('delBtn').addEventListener('click', ()=>{ const s = currentScript(); if(s) deleteScript(s.id); });
+
+/* =====================================================================
+   Find errors -> red marks + AI fix proposals -> diff preview -> apply
+   ===================================================================== */
+let fx = { issues:[], sel:0, view:'list', fix:null, scanning:false, ctl:null, token:0 };
+function extractJson(t){
+  if(!t) return null;
+  const a = t.indexOf('['), b = t.lastIndexOf(']');
+  if(a === -1 || b <= a) return null;
+  try{ return JSON.parse(t.slice(a, b + 1)); }catch(e){ return null; }
+}
+function applyFixText(code, f){
+  const L = code.split('\n');
+  L.splice(f.start - 1, f.end - f.start + 1, ...(f.code === '' ? [] : f.code.split('\n')));
+  return L.join('\n');
+}
+function diffLines(a, b){
+  const n = a.length, m = b.length;
+  if(n * m > 60000) return a.map(s=>({ t:'-', s })).concat(b.map(s=>({ t:'+', s })));
+  const dp = Array.from({ length:n + 1 }, ()=>new Uint16Array(m + 1));
+  for(let i = n - 1; i >= 0; i--) for(let j = m - 1; j >= 0; j--) dp[i][j] = a[i] === b[j] ? dp[i+1][j+1] + 1 : Math.max(dp[i+1][j], dp[i][j+1]);
+  const out = []; let i = 0, j = 0;
+  while(i < n && j < m){
+    if(a[i] === b[j]){ out.push({ t:' ', s:a[i] }); i++; j++; }
+    else if(dp[i+1][j] >= dp[i][j+1]) out.push({ t:'-', s:a[i++] });
+    else out.push({ t:'+', s:b[j++] });
+  }
+  while(i < n) out.push({ t:'-', s:a[i++] });
+  while(j < m) out.push({ t:'+', s:b[j++] });
+  return out;
+}
+function renderDiffHtml(code, f){
+  const L = code.split('\n'), ctxB = Math.max(0, f.start - 3);
+  const before = L.slice(ctxB, f.start - 1), oldB = L.slice(f.start - 1, f.end), after = L.slice(f.end, f.end + 2);
+  const newB = f.code === '' ? [] : f.code.split('\n');
+  const ops = before.map(s=>({ t:' ', s })).concat(diffLines(oldB, newB), after.map(s=>({ t:' ', s })));
+  let oldLn = ctxB + 1, newLn = ctxB + 1, html = '';
+  ops.forEach(o=>{
+    let num;
+    if(o.t === ' '){ num = oldLn; oldLn++; newLn++; } else if(o.t === '-'){ num = oldLn; oldLn++; } else { num = newLn; newLn++; }
+    html += '<div class="df ' + (o.t === '+' ? 'add' : o.t === '-' ? 'del' : '') + '"><span class="dn">' + num + '</span><span class="dg">' + (o.t === ' ' ? '' : o.t) + '</span><code>' + (highlight(o.s, true) || ' ') + '</code></div>';
+  });
+  return html;
+}
+function closeFixPanel(){
+  fx.token++; if(fx.ctl){ try{ fx.ctl.abort(); }catch(e){} fx.ctl = null; }
+  fx.scanning = false; byId('fixPanel').classList.remove('show'); clearErrMarks();
+}
+function renderFix(){
+  const body = byId('fixBody'), s = currentScript();
+  if(!s){ return; }
+  if(fx.view === 'diff' && fx.fix){
+    const f = fx.fix;
+    body.innerHTML = '<button class="fx-back" data-a="back" type="button">‹ Quay lại</button>' +
+      '<div class="fx-dtitle"><b>' + escapeHtml(f.title) + '</b><span>' + escapeHtml(f.why || '') + '</span></div>' +
+      '<div class="fx-diff">' + renderDiffHtml(s.code, f) + '</div>' +
+      '<div class="fx-acts"><span class="fx-badge ' + (f.errsAfter === 0 ? 'ok' : 'warn') + '">' + (f.errsAfter === 0 ? 'Sau khi sửa: cú pháp ✓' : 'Sau khi sửa vẫn còn ' + f.errsAfter + ' lỗi cú pháp') + '</span><button class="fx-apply" data-a="apply" type="button">✅ Áp dụng sửa</button></div>';
+    return;
+  }
+  let h = '';
+  if(fx.scanning) h += '<div class="fx-scan"><span class="fx-spin"></span><span>AI đang soát lỗi & nghĩ cách sửa…</span><button data-a="stop" type="button">Dừng</button></div>';
+  fx.issues.forEach((it, i)=>{
+    h += '<div class="fx-issue' + (i === fx.sel ? ' sel' : '') + '" data-i="' + i + '"><span class="fx-ln">Dòng ' + it.line + '</span><span class="fx-msg">' + escapeHtml(it.msg) + '</span></div>';
+    if(i === fx.sel){
+      if(it.fixes.length){
+        it.fixes.forEach((f, k)=>{
+          h += '<div class="fx-fix" data-i="' + i + '" data-f="' + k + '"><div class="fx-ft"><b>💡 ' + escapeHtml(f.title) + '</b><span class="fx-badge ' + (f.errsAfter === 0 ? 'ok' : 'warn') + '">' + (f.errsAfter === 0 ? 'cú pháp ✓' : '⚠') + '</span></div><small>' + escapeHtml(f.why || '') + '</small><em>Chạm để xem code sau khi sửa ›</em></div>';
+        });
+      } else if(!fx.scanning){
+        h += '<div class="fx-none">AI chưa đề xuất được cách sửa cho lỗi này. <button data-a="retry" type="button">🔁 Nhờ AI đề xuất</button></div>';
+      }
+    }
+  });
+  body.innerHTML = h;
+}
+function openFixPanel(){ byId('fixPanel').classList.add('show'); }
+async function runFindErrors(){
+  const s = currentScript();
+  if(!s || !s.code || !s.code.trim()){ toast('Chưa có code để soát lỗi', 'info'); return; }
+  if(streaming) return;
+  const sam = await ensureSample();
+  const tk = ++fx.token; if(fx.ctl){ try{ fx.ctl.abort(); }catch(e){} }
+  const local = findErrors(s.code);
+  fx.issues = local.map(e=>({ line:e.line, msg:e.msg, kind:'syntax', fixes:[] }));
+  fx.sel = 0; fx.view = 'list'; fx.fix = null; fx.scanning = true;
+  byId('fixTitle').textContent = local.length ? '🔍 Tìm thấy ' + local.length + ' lỗi cú pháp' : '🔍 Đang soát lỗi…';
+  openFixPanel(); renderFix();
+  if(local.length){ setErrMarks(local.map(e=>e.line)); requestAnimationFrame(()=>scrollToLine(local[0].line)); }
+  if(!sam){ fx.scanning = false; renderFix(); return; }
+  fx.ctl = new AbortController();
+  let ai = [];
+  try{ ai = await aiScan(s, local, fx.ctl.signal); }catch(e){ if(tk !== fx.token) return; console.error(e); }
+  if(tk !== fx.token) return;
+  fx.scanning = false; fx.ctl = null;
+  // merge: attach AI fixes to the nearest local issue, keep the rest as logic issues
+  ai.forEach(a=>{
+    const near = fx.issues.find(it=>it.kind === 'syntax' && Math.abs(it.line - a.line) <= 3);
+    if(near){ near.fixes = near.fixes.concat(a.fixes); }
+    else fx.issues.push({ line:a.line, msg:a.msg, kind:'logic', fixes:a.fixes });
+  });
+  if(!fx.issues.length){ closeFixPanel(); toast('Không phát hiện lỗi ✓', 'info'); return; }
+  fx.issues.sort((x, y)=>x.line - y.line);
+  fx.sel = 0;
+  byId('fixTitle').textContent = '🔍 ' + fx.issues.length + ' vấn đề cần xem';
+  setErrMarks(fx.issues.map(it=>it.line));
+  renderFix();
+  requestAnimationFrame(()=>scrollToLine(fx.issues[0].line));
+}
+async function aiScan(s, local, signal){
+  const sam = await ensureSample(); if(!sam) return [];
+  const L = s.code.split('\n');
+  let a = 0, b = L.length;
+  if(s.code.length > 70000){
+    const c = local.length ? local[0].line - 1 : 0;
+    a = Math.max(0, c - 200); b = Math.min(L.length, c + 200);
+  }
+  const numbered = L.slice(a, b).map((l, i)=>(a + i + 1) + '| ' + l).join('\n');
+  const sys = [
+    'Bạn là chuyên gia soát lỗi Luau (Roblox). Tìm LỖI THẬT trong script được đánh số dòng: cú pháp, biến chưa khai báo/nil, sai tên API hay thuộc tính, logic hỏng, rò rỉ connection, khai báo/hàm trùng gây xung đột.',
+    'QUY TẮC:',
+    '- Chỉ báo lỗi chắc chắn, tối đa 4 lỗi, ưu tiên nghiêm trọng nhất. Nếu code ổn và không có lỗi thật thì trả về [].',
+    '- Mỗi lỗi có 1–2 cách sửa. Mỗi cách sửa thay thế các dòng start..end (theo số dòng đã đánh) bằng "code". Chọn khoảng dòng NHỎ NHẤT có thể.',
+    '- Sửa phải HỢP với code xung quanh: giữ nguyên tên biến/hàm/service đã dùng, thụt lề đúng như code quanh đó, không đổi hành vi khác, không tạo khai báo trùng hay xung đột, không thêm comment thừa, cân bằng end/ngoặc.',
+    '- Trả về DUY NHẤT một mảng JSON, không markdown, không giải thích ngoài JSON:',
+    '[{"line":N,"msg":"mô tả lỗi ngắn (tiếng Việt)","fixes":[{"title":"tên cách sửa ≤ 30 ký tự","why":"1 câu lý do","start":N,"end":N,"code":"các dòng thay thế, nhiều dòng thì nối bằng \\n"}]}]'
+  ].join('\n');
+  const hint = local.length ? 'LỖI CÚ PHÁP ĐÃ PHÁT HIỆN (bắt buộc đưa cách sửa cho các lỗi này):\n' + local.map(e=>'- dòng ' + e.line + ': ' + e.msg).join('\n') + '\n\n' : '';
+  const res = await sam([{ role:'user', content: sys + '\n\n' + hint + 'SCRIPT' + (a > 0 || b < L.length ? ' (chỉ một đoạn)' : '') + ':\n' + numbered }], { modelTier:'complex', signal });
+  const arr = extractJson(res.text);
+  if(!Array.isArray(arr)) return [];
+  const out = [];
+  arr.slice(0, 6).forEach(it=>{
+    const line = parseInt(it.line, 10);
+    if(!(line >= 1 && line <= L.length) || typeof it.msg !== 'string') return;
+    const fixes = [];
+    (Array.isArray(it.fixes) ? it.fixes : []).slice(0, 3).forEach(f=>{
+      const st = parseInt(f.start, 10), en = parseInt(f.end, 10);
+      if(!(st >= 1 && en >= st && en <= L.length) || typeof f.code !== 'string') return;
+      const fx1 = { title: String(f.title || 'Cách sửa').slice(0, 40), why: String(f.why || ''), start: st, end: en, code: cleanCodeFence(f.code) };
+      fx1.after = applyFixText(s.code, fx1);
+      fx1.errsAfter = findErrors(fx1.after).length;
+      fixes.push(fx1);
+    });
+    out.push({ line, msg: it.msg, fixes });
+  });
+  return out;
+}
+byId('findBtn').addEventListener('click', runFindErrors);
+byId('fixClose').addEventListener('click', closeFixPanel);
+byId('fixBody').addEventListener('click', e=>{
+  const s = currentScript(); if(!s) return;
+  const act = e.target.closest('[data-a]');
+  if(act){
+    const a = act.dataset.a;
+    if(a === 'stop'){ if(fx.ctl) fx.ctl.abort(); fx.scanning = false; renderFix(); }
+    else if(a === 'retry'){ runFindErrors(); }
+    else if(a === 'back'){ fx.view = 'list'; renderFix(); }
+    else if(a === 'apply' && fx.fix){
+      const f = fx.fix, it = fx.issues[fx.sel];
+      s.prev = s.code;
+      if(!s.history) s.history = [];
+      s.history.push('Sửa lỗi dòng ' + f.start + (it ? ': ' + it.msg : ''));
+      applyCode(s, f.after);
+      closeFixPanel();
+      toast('✅ Đã áp dụng: ' + f.title + ' — bấm ↩ Hoàn trả nếu muốn lấy lại', 'info');
+    }
+    return;
+  }
+  const fixEl = e.target.closest('.fx-fix');
+  if(fixEl){
+    const it = fx.issues[+fixEl.dataset.i]; if(!it) return;
+    fx.fix = it.fixes[+fixEl.dataset.f]; fx.view = 'diff'; renderFix(); return;
+  }
+  const iss = e.target.closest('.fx-issue');
+  if(iss){ fx.sel = +iss.dataset.i; renderFix(); scrollToLine(fx.issues[fx.sel].line); }
+});
+
+/* =====================================================================
+   Post-generation suggestions (AI-made, with a local fallback)
+   ===================================================================== */
+let suggToken = 0, suggCtl = null;
+function localSuggestions(code){
+  const c = code || '', out = [];
+  const add = (t, p)=>out.push({ t, p });
+  if(!/pcall|xpcall/.test(c)) add('🛡 Thêm xử lý lỗi', 'Thêm xử lý lỗi bằng pcall cho các thao tác dễ lỗi và cảnh báo rõ ràng, không đổi hành vi hiện tại.');
+  if(!/Disconnect|Destroy/.test(c)) add('🧹 Dọn dẹp khi tắt', 'Thêm cơ chế dọn dẹp sạch (Disconnect connection, Destroy object) khi tắt tính năng hoặc khi nhân vật respawn.');
+  if(!/CONFIG/.test(c)) add('⚙ Gom vào CONFIG', 'Gom các giá trị chỉnh được (phím, màu, kích thước, tốc độ...) vào một bảng CONFIG ở đầu file mà không đổi hành vi.');
+  add('🚀 Chống lag', 'Tối ưu hiệu năng và chống lag: cache tham chiếu, throttle vòng lặp nền, dùng event thay polling, tái sử dụng object.');
+  if(!/ScreenGui/.test(c)) add('🎨 Thêm giao diện đẹp', 'Thêm giao diện điều khiển gọn đẹp (UICorner, UIStroke, tween mượt) tích hợp với logic hiện có.');
+  else if(!/Activated/.test(c)) add('📱 Hỗ trợ điện thoại', 'Làm giao diện dùng tốt trên điện thoại: nút đủ lớn để chạm, dùng Activated, hỗ trợ cảm ứng và chuột.');
+  add('🧪 Thêm log debug', 'Thêm hệ thống log có tiền tố và biến DEBUG bật/tắt để dễ kiểm tra lỗi.');
+  return out.slice(0, 6);
+}
+function renderSuggest(list){
+  const bar = byId('suggestBar'), box = byId('suggestChips');
+  if(!list || !list.length){ bar.classList.remove('show'); return; }
+  box.innerHTML = '';
+  list.forEach(sg=>{
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'sg-chip'; b.textContent = sg.t;
+    b.addEventListener('click', ()=>{ bar.classList.remove('show'); handleSend(sg.p); });
+    box.appendChild(b);
+  });
+  bar.classList.add('show');
+}
+async function makeSuggestions(s){
+  const tk = ++suggToken;
+  if(suggCtl){ try{ suggCtl.abort(); }catch(e){} }
+  const bar = byId('suggestBar');
+  byId('suggestChips').innerHTML = '<span class="sg-load"><span class="fx-spin"></span> AI đang nghĩ gợi ý xịn hơn…</span>';
+  bar.classList.add('show');
+  let list = null;
+  try{
+    const sam = await ensureSample();
+    if(sam){
+      suggCtl = new AbortController();
+      const code = s.code.length > 14000 ? s.code.slice(0, 9000) + '\n-- ... (lược bớt) ...\n' + s.code.slice(-5000) : s.code;
+      const hist = (s.history || []).slice(-8).map((h, i)=>(i + 1) + '. ' + h).join('\n');
+      const prompt = 'Bạn là cố vấn Luau (Roblox). Dựa trên script và lịch sử yêu cầu dưới đây, đề xuất đúng 6 hướng nâng cấp XỊN hơn: cụ thể, khác nhau, không trùng tính năng đã có, nhiều giá trị thực tế (hiệu năng, độ bền, giao diện, tiện dụng, tính năng mới hợp lý).\n' +
+        'Trả về DUY NHẤT một mảng JSON, không markdown: [{"t":"emoji + nhãn ngắn ≤ 26 ký tự","p":"yêu cầu đầy đủ, rõ ràng bằng tiếng Việt để một AI khác thực hiện trên script này mà không xung đột với code hiện có"}]\n\n' +
+        'LỊCH SỬ:\n' + (hist || '(chưa có)') + '\n\nSCRIPT:\n' + code;
+      let res;
+      try{ res = await sam([{ role:'user', content: prompt }], { modelTier:'fast', signal: suggCtl.signal }); }
+      catch(e){ if(e && e.code === 'cancelled') throw e; res = await sam([{ role:'user', content: prompt }], { signal: suggCtl.signal }); }
+      const arr = extractJson(res.text);
+      if(Array.isArray(arr)) list = arr.filter(x=>x && typeof x.t === 'string' && typeof x.p === 'string').slice(0, 6).map(x=>({ t: x.t.slice(0, 32), p: x.p }));
+    }
+  }catch(e){ if(e && e.code === 'cancelled') return; }
+  if(tk !== suggToken) return;
+  if(!list || list.length < 3) list = localSuggestions(s.code);
+  s.sugg = list; saveScripts();
+  if(currentScript() === s) renderSuggest(list);
+}
+byId('suggestX').addEventListener('click', ()=>byId('suggestBar').classList.remove('show'));
+
+/* =====================================================================
+   Perf toggles + FPS meter
+   ===================================================================== */
+let perfOn = false, fpsOn = false, fpsRaf = 0, fpsFrames = 0, fpsT0 = 0, fpsMax = 0;
+try{ perfOn = localStorage.getItem('luau_perf_v1') === '1'; fpsOn = localStorage.getItem('luau_fps_v1') === '1'; }catch(e){}
+function fpsLoop(ts){
+  if(!fpsOn) return;
+  fpsFrames++; if(!fpsT0) fpsT0 = ts;
+  if(ts - fpsT0 >= 500){
+    const f = Math.round(fpsFrames * 1000 / (ts - fpsT0)); fpsMax = Math.max(fpsMax, f);
+    byId('fpsBadge').textContent = 'FPS ' + f + ' · đỉnh ' + fpsMax;
+    fpsFrames = 0; fpsT0 = ts;
+  }
+  fpsRaf = requestAnimationFrame(fpsLoop);
+}
+function applyToggles(){
+  document.body.classList.toggle('perf', perfOn);
+  byId('perfBtn').textContent = '⚡ Hiệu năng cao: ' + (perfOn ? 'Bật' : 'Tắt');
+  byId('perfBtn').classList.toggle('on', perfOn);
+  byId('fpsBtn').textContent = '📈 Đo FPS: ' + (fpsOn ? 'Bật' : 'Tắt');
+  byId('fpsBtn').classList.toggle('on', fpsOn);
+  byId('fpsBadge').style.display = fpsOn ? 'block' : 'none';
+  if(fpsOn){ fpsFrames = 0; fpsT0 = 0; cancelAnimationFrame(fpsRaf); fpsRaf = requestAnimationFrame(fpsLoop); } else cancelAnimationFrame(fpsRaf);
+}
+byId('perfBtn').addEventListener('click', ()=>{ perfOn = !perfOn; try{ localStorage.setItem('luau_perf_v1', perfOn ? '1' : '0'); }catch(e){} applyToggles(); });
+byId('fpsBtn').addEventListener('click', ()=>{ fpsOn = !fpsOn; fpsMax = 0; try{ localStorage.setItem('luau_fps_v1', fpsOn ? '1' : '0'); }catch(e){} applyToggles(); });
+
+/* ---------- copy button ---------- */
+document.getElementById('copyBtn').addEventListener('click', async ()=>{
+  const s = currentScript();
+  if(!s || !s.code){ return; }
+  const btn = document.getElementById('copyBtn');
+  try{
+    await navigator.clipboard.writeText(s.code);
+  }catch(e){
+    const ta = document.getElementById('codeArea');
+    ta.select();
+    try{ document.execCommand('copy'); }catch(e2){}
+    ta.setSelectionRange(0,0);
+  }
+  btn.classList.add('copied');
+  btn.textContent = '✓';
+  setTimeout(()=>{ btn.classList.remove('copied'); btn.textContent = '⧉'; }, 1200);
+});
+
+/* ---------- sidebar toggle ---------- */
+document.getElementById('hamburger').addEventListener('click', ()=>{
+  document.getElementById('sidebar').classList.toggle('hidden');
+});
+document.getElementById('newBtn').addEventListener('click', ()=>{
+  createScript();
+  if(window.innerWidth < 700) document.getElementById('sidebar').classList.add('hidden');
+  const nameEl = document.getElementById('scriptName');
+  setTimeout(()=>{ nameEl.focus(); nameEl.select(); }, 50);
+});
+
+/* ---------- AI generation ---------- */
+const promptInput = document.getElementById('promptInput');
+promptInput.addEventListener('input', function(){
+  this.style.height = 'auto';
+  this.style.height = Math.min(this.scrollHeight, 90) + 'px';
+});
+promptInput.addEventListener('keydown', (e)=>{
+  if(e.key === 'Enter' && !e.shiftKey){ e.preventDefault(); handleSend(); }
+});
+document.getElementById('sendBtn').addEventListener('click', ()=>{
+  const btn = document.getElementById('sendBtn');
+  if(btn.dataset.mode === 'stop'){
+    if(currentController) currentController.abort();
+    return;
+  }
+  handleSend();
+});
+
+async function ensureSample(){
+  if(sample) return sample;
+  if(!window.claude || !window.claude.use) return null;
+  try{ sample = await window.claude.use('sample'); }catch(e){ sample = null; }
+  return sample;
+}
+
+const MAX_ATTEMPTS = 10; // continuation rounds if AI gets truncated — no time limit, only a safety cap
+let currentController = null;
+
+let choiceOpen = false;
+function askToggleMode(){
+  return new Promise(res=>{
+    const sh = document.getElementById('choiceSheet');
+    choiceOpen = true; sh.classList.add('show');
+    const done = v=>{ choiceOpen = false; sh.classList.remove('show'); sh.onclick = null; res(v); };
+    sh.querySelectorAll('.choice-btn').forEach(b=>{ b.onclick = e=>{ e.stopPropagation(); done(b.dataset.mode); }; });
+    document.getElementById('choiceSkip').onclick = e=>{ e.stopPropagation(); done('none'); };
+    sh.onclick = e=>{ if(e.target === sh) done('cancel'); };
+  });
+}
+const TOGGLE_NOTES = {
+  keybind: '\n\nCÁCH BẬT/TẮT (người dùng đã chọn): TOGGLE KEYBIND. Khai báo hằng số TOGGLE_KEY = Enum.KeyCode.<phím hợp lý> ở đầu file để dễ đổi; dùng UserInputService.InputBegan và bỏ qua khi gameProcessedEvent = true; giữ biến trạng thái enabled; viết hàm setEnabled(state) dọn sạch hoàn toàn khi tắt (Disconnect mọi connection, Destroy object tạo ra) để không rò rỉ và không gây lag. Nếu project đã có cơ chế toggle thì tái sử dụng/mở rộng, không tạo trùng.',
+  button: '\n\nCÁCH BẬT/TẮT (người dùng đã chọn): TOGGLE BUTTON. Tạo ScreenGui (ResetOnSpawn = false, DisplayOrder cao) trong PlayerGui chứa một TextButton bo góc (UICorner) hiển thị ON/OFF, đổi màu mượt bằng TweenService, kích thước đủ lớn để chạm trên điện thoại, có thể kéo thả nếu hợp lý; nút gọi hàm setEnabled(state) dọn sạch hoàn toàn khi tắt (Disconnect, Destroy) để không rò rỉ và không gây lag. Nếu project đã có nút toggle thì tái sử dụng/mở rộng, không tạo trùng.'
+};
+
+async function handleSend(override){
+  const btn = document.getElementById('sendBtn');
+  const isSugg = typeof override === 'string';
+  if(isSugg && btn.dataset.mode === 'stop') return;
+  const atts = isSugg ? [] : attachments;
+  const typed = isSugg ? override : promptInput.value.trim();
+  const text = typed || (atts.length ? 'Đọc script đính kèm và tích hợp / sửa lỗi / hoàn thiện nó trong project này.' : '');
+  if(!text || choiceOpen) return;
+  const attachBlock = atts.map(a=>'\n\n[TỆP ĐÍNH KÈM: ' + a.name + ' — đoạn script người dùng dán vào để bạn tham khảo, tích hợp, sửa hoặc hoàn thiện]\n---\n' + a.text + '\n---').join('');
+  const mode = isSugg ? 'none' : await askToggleMode();
+  if(mode === 'cancel') return;
+  const toggleNote = TOGGLE_NOTES[mode] || '';
+  let s = currentScript();
+  if(!s){
+    createScript();
+    s = currentScript();
+  }
+  if(!s.history) s.history = [];
+  suggToken++; if(suggCtl){ try{ suggCtl.abort(); }catch(e){} }
+  byId('suggestBar').classList.remove('show'); closeFixPanel();
+
+  btn.disabled = false; btn.textContent = '■'; btn.classList.add('stop-mode'); btn.dataset.mode = 'stop';
+  promptInput.disabled = true;
+  setStatus('busy', 'Đang kết nối AI...');
+
+  const sam = await ensureSample();
+  if(!sam){
+    toast('Không kết nối được tính năng AI trên trang này. Thử tải lại trang.');
+    setStatus('empty', 'AI không khả dụng');
+    btn.disabled = false; btn.textContent = '➤'; btn.classList.remove('stop-mode'); btn.dataset.mode = 'send';
+    promptInput.disabled = false;
+    return;
+  }
+
+  setStatus('busy', 'AI đang viết...');
+  beginStreaming();
+
+  const sys = [
+    'Bạn là chuyên gia lập trình Luau (Roblox) trình độ cao, chuyên viết code production-grade.',
+    'YÊU CẦU BẮT BUỘC:',
+    '- Chỉ trả về CODE LUAU THUẦN, không giải thích, không markdown, không dấu ```',
+    '- Viết code chuyên nghiệp, tối ưu hiệu năng, có cấu trúc rõ ràng (module/OOP khi phù hợp), tránh cách viết sơ khai/cơ bản.',
+    '- Dùng các kỹ thuật nâng cao khi hợp lý: pcall/xpcall để xử lý lỗi, type checking, metatables/OOP, task.spawn/task.wait thay vì wait(), RemoteEvent/RemoteFunction đúng chuẩn nếu liên quan client-server, tổ chức code theo module rõ ràng, đặt tên biến/hàm rõ nghĩa, comment ngắn gọn ở chỗ quan trọng.',
+    '- Đây là một PROJECT đang phát triển liên tục, không phải yêu cầu độc lập. TRƯỚC KHI viết, hãy đọc kỹ code hiện tại + lịch sử các yêu cầu trước để hiểu toàn bộ kiến trúc (biến, service, hàm, module, event đã khai báo).',
+    '- TÍCH HỢP tính năng mới vào đúng chỗ hợp lý trong cấu trúc sẵn có: tái sử dụng service/biến/hàm đã có (không GetService hay khai báo lại những gì đã tồn tại), nối vào đúng module/table liên quan, không tạo phiên bản trùng của cùng một chức năng.',
+    '- TUYỆT ĐỐI không được tạo xung đột: không đặt trùng tên biến/hàm với tên đã dùng cho mục đích khác, không ghi đè logic cũ trừ khi yêu cầu mới thay thế rõ ràng, không phá vỡ tính năng đã có.',
+    '- Giữ lại toàn bộ phần code cũ còn hợp lệ và không liên quan tới yêu cầu mới, chỉ bổ sung/chỉnh sửa đúng phần cần thiết.',
+    '- Đảm bảo code không thừa thãi, không lặp lại logic không cần thiết, không có phần chết (dead code).',
+    '- Code phải cân bằng đầy đủ end/then/do, dấu ngoặc, dấu nháy — TUYỆT ĐỐI không được dừng giữa chừng một khối lệnh.'
+  ].join('\n') + '\n\nPHONG CÁCH VIẾT do người dùng chọn (' + curStyle().name + '): ' + curStyle().note + ' Nếu phong cách này mâu thuẫn với các yêu cầu về phong cách ở trên thì ƯU TIÊN phong cách này, nhưng code vẫn phải chạy đúng, cân bằng end/ngoặc và không xung đột với project.';
+
+  const historyBlock = s.history.length
+    ? '\n\nLịch sử các yêu cầu đã thực hiện trên project này (theo thứ tự, để bạn hiểu toàn bộ tính năng đã có và tránh xung đột):\n' +
+      s.history.slice(-10).map((h,i)=>(i+1)+'. '+h).join('\n')
+    : '';
+
+  const userMsg = 'Tên script: ' + s.name + historyBlock + '\n\n' +
+    'Code hiện tại (nguồn sự thật duy nhất về những gì đã tồn tại, có thể rỗng):\n---\n' + (s.code || '(chưa có code)') + '\n---\n\n' +
+    'Yêu cầu mới của người dùng: ' + text + attachBlock + toggleNote;
+
+  try{
+    let fullText = '';
+    let attempts = 0;
+    while(attempts < MAX_ATTEMPTS){
+      attempts++;
+      const messages = attempts === 1
+        ? [{ role: 'user', content: sys + '\n\n' + userMsg }]
+        : [
+            { role: 'user', content: sys + '\n\n' + userMsg },
+            { role: 'assistant', content: fullText },
+            { role: 'user', content: 'Câu trả lời trước bị cắt giữa chừng. Viết TIẾP chính xác từ chỗ bị cắt (không lặp lại phần đã có, không thêm giải thích, không thêm dấu ```), cho tới khi code hoàn chỉnh và cân bằng end/ngoặc.' }
+          ];
+      if(attempts > 1){
+        setStatus('busy', 'AI đang viết tiếp (' + attempts + ')...');
+      }
+      currentController = new AbortController();
+      const res = await sam(messages, {
+        modelTier: 'complex',
+        signal: currentController.signal,
+        onText: ({text: partial})=>{
+          setStreamTarget(cleanCodeFence(fullText + partial));
+        }
+      });
+      fullText += res.text;
+      if(!res.truncated) break;
+    }
+    if(s.code) s.prev = s.code;
+    s.code = cleanCodeFence(fullText);
+    s.history.push(text + (atts.length ? ' [đính kèm ' + atts.length + ' tệp .txt]' : '') + (mode==='keybind' ? ' [toggle: keybind]' : mode==='button' ? ' [toggle: button]' : ''));
+    if(s.history.length > 20) s.history = s.history.slice(-20);
+    saveScripts();
+    endStreaming(s.code);
+    updateUndoBtn();
+    if(!isSugg){ clearAttachments(); promptInput.value = ''; promptInput.style.height = 'auto'; }
+    makeSuggestions(s);
+  }catch(err){
+    console.error(err);
+    endStreaming(s.code || '');
+    let msg = 'Lỗi khi gọi AI';
+    if(err && err.code === 'not_granted') msg = 'Bạn cần cho phép quyền dùng AI trên trang này để tạo code.';
+    else if(err && err.code === 'rate_limited') msg = 'AI đang bị giới hạn tốc độ, thử lại sau ít giây.';
+    else if(err && err.code === 'cancelled') msg = 'Đã dừng yêu cầu theo ý bạn.';
+    else if(err && err.message) msg = 'Lỗi khi gọi AI: ' + err.message;
+    toast(msg);
+    if(!(err && err.code === 'cancelled')) setStatus('err', 'Lỗi khi gọi AI');
+  } finally {
+    currentController = null;
+    btn.disabled = false; btn.textContent = '➤'; btn.classList.remove('stop-mode'); btn.dataset.mode = 'send';
+    promptInput.disabled = false;
+  }
+}
+
+function cleanCodeFence(t){
+  if(!t) return '';
+  let s = t.trim();
+  s = s.replace(/^```(lua|luau)?\n?/i, '').replace(/```$/,'');
+  return s.trim();
+}
+
+/* ---------- preview / illustration ---------- */
+function stripCommentsOnly(code){
+  let out = ''; let i = 0; const n = code.length;
+  while(i < n){
+    let longCm = stickyAt(RE_LCM, code, i);
+    if(longCm){
+      const closeTag = ']' + longCm[1] + ']';
+      let end = code.indexOf(closeTag, i + longCm[0].length); end = end===-1?n:end+closeTag.length;
+      i = end; continue;
+    }
+    if(code.startsWith('--', i)){
+      let end = code.indexOf('\n', i); end = end===-1?n:end; i = end; continue;
+    }
+    out += code[i]; i++;
+  }
+  return out;
+}
+
+function parseColor(v){
+  if(!v) return null;
+  let m = /Color3\.fromRGB\(\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)\s*\)/.exec(v);
+  if(m) return 'rgb(' + m[1] + ',' + m[2] + ',' + m[3] + ')';
+  m = /Color3\.new\(\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)\s*\)/.exec(v);
+  if(m) return 'rgb(' + Math.round(m[1]*255) + ',' + Math.round(m[2]*255) + ',' + Math.round(m[3]*255) + ')';
+  return null;
+}
+function cleanVal(v){
+  if(!v) return '';
+  v = String(v).trim().replace(/[,;]+$/, '');
+  const m = /^["'](.*)["']$/.exec(v);
+  if(m) v = m[1];
+  return v.length > 26 ? v.slice(0,26) + '…' : v;
+}
+
+function colorOf(v){
+  if(!v) return null;
+  const c = parseColor(v); if(c) return c;
+  const m = /Color3\.fromHex\(\s*["']#?([0-9a-fA-F]{6})["']/.exec(v);
+  if(m){ const h = m[1]; return 'rgb(' + parseInt(h.slice(0,2),16) + ',' + parseInt(h.slice(2,4),16) + ',' + parseInt(h.slice(4,6),16) + ')'; }
+  return null;
+}
+function toHex(c){
+  const m = /rgb\(\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)\s*\)/.exec(c || '');
+  if(!m) return '';
+  return '#' + [m[1],m[2],m[3]].map(x=>Math.max(0,Math.min(255,Math.round(+x))).toString(16).padStart(2,'0')).join('').toUpperCase();
+}
+function toRgba(c, a){
+  const m = /rgb\(\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)\s*\)/.exec(c || '');
+  return m ? 'rgba(' + m[1] + ',' + m[2] + ',' + m[3] + ',' + a + ')' : 'transparent';
+}
+function tokensOf(s){ return (s||'').replace(/([a-z])([A-Z])/g,'$1 $2').toLowerCase().split(/[^a-z0-9]+/).filter(Boolean); }
+const ON_T = ['on','enabled','active','enable'], OFF_T = ['off','disabled','inactive','disable'];
+const GUI_BOX = new Set(['Frame','TextButton','TextLabel','TextBox','ImageLabel','ImageButton','ScrollingFrame']);
+
+function buildConsts(code){
+  const consts = {}, fields = {}; let m;
+  const re = /^[ \t]*local\s+([A-Za-z_]\w*)\s*(?::\s*[\w.?<>]+)?\s*=\s*([^\n]+)$/gm;
+  while((m = re.exec(code))) if(!(m[1] in consts)) consts[m[1]] = m[2].trim().replace(/[;,]+$/,'');
+  const fre = /^[ \t]+([A-Za-z_]\w*)\s*=\s*([^\n]+?),?[ \t]*$/gm;
+  while((m = fre.exec(code))) if(!(m[1] in fields)) fields[m[1]] = m[2].trim().replace(/[;,]+$/,'');
+  return { consts, fields };
+}
+function resolveExpr(v, ctx, d){
+  d = d || 0;
+  if(v == null || d > 5) return v;
+  v = String(v).trim();
+  let m = /^([A-Za-z_]\w*)$/.exec(v);
+  if(m && ctx.consts[v] !== undefined && !/^\{/.test(ctx.consts[v])) return resolveExpr(ctx.consts[v], ctx, d+1);
+  m = /^([A-Za-z_]\w*)\.([A-Za-z_]\w*)$/.exec(v);
+  if(m && ctx.fields[m[2]] !== undefined && /^\{/.test(ctx.consts[m[1]] || '')) return resolveExpr(ctx.fields[m[2]], ctx, d+1);
+  return v;
+}
+function parseUDim2(v){
+  if(!v) return null;
+  let m = /UDim2\.new\(\s*([-\d.]+)\s*,\s*([-\d.]+)\s*,\s*([-\d.]+)\s*,\s*([-\d.]+)\s*\)/.exec(v);
+  if(m) return { sx:+m[1], ox:+m[2], sy:+m[3], oy:+m[4] };
+  m = /UDim2\.fromOffset\(\s*([-\d.]+)\s*,\s*([-\d.]+)\s*\)/.exec(v);
+  if(m) return { sx:0, ox:+m[1], sy:0, oy:+m[2] };
+  m = /UDim2\.fromScale\(\s*([-\d.]+)\s*,\s*([-\d.]+)\s*\)/.exec(v);
+  if(m) return { sx:+m[1], ox:0, sy:+m[2], oy:0 };
+  return null;
+}
+function parseVec2(v){ const m = /Vector2\.new\(\s*([-\d.]+)\s*,\s*([-\d.]+)\s*\)/.exec(v || ''); return m ? { x:+m[1], y:+m[2] } : null; }
+
+// pick the value for a given toggle state (ON/OFF) from every assignment seen for that property
+function getProp(n, p, state, ctx){
+  const list = n.all[p] || [];
+  if(!list.length) return null;
+  const pick = x => resolveExpr(x, ctx);
+  for(const raw of list){
+    const r = raw.trim();
+    if(/^(["']|string\.format)/.test(r)) continue;
+    const t = /^(.*?)\band\b(.+?)\bor\b(.+)$/.exec(r);
+    if(t) return pick(state === 'off' ? t[3] : t[2]);
+  }
+  const want = state === 'off' ? OFF_T : ON_T;
+  for(const raw of list){ if(tokensOf(raw.trim()).some(x=>want.includes(x))) return pick(raw); }
+  return pick(list[list.length-1]);
+}
+function evalText(v, ctx, state, d){
+  d = d || 0;
+  v = resolveExpr(v, ctx);
+  if(v == null || d > 5) return '';
+  v = String(v).trim();
+  if(!/^(["']|string\.format)/.test(v)){
+    const t = /^(.*?)\band\b(.+?)\bor\b(.+)$/.exec(v);
+    if(t) return evalText(state === 'off' ? t[3] : t[2], ctx, state, d+1);
+  }
+  if(/^\(.*\)$/.test(v)) return evalText(v.slice(1,-1), ctx, state, d+1);
+  const fm = /^string\.format\(\s*(["'])((?:\\.|(?!\1).)*)\1/.exec(v);
+  if(fm) return fm[2].replace(/%[-+ 0#]*\d*(?:\.\d+)?[a-zA-Z%]/g, t => t === '%%' ? '%' : (/s$/.test(t) ? (state === 'off' ? 'OFF' : 'ON') : '50'));
+  const sm = /^(["'])((?:\\.|(?!\1).)*)\1$/.exec(v);
+  if(sm) return sm[2].replace(/\\n/g,' ');
+  if(v.includes('..')) return v.split('..').map(p=>evalText(p, ctx, state, d+1)).join('');
+  if(/^-?[\d.]+$/.test(v)) return v;
+  return '•';
+}
+
+function analyzeLuau(rawCode){
+  const code = stripCommentsOnly(rawCode);
+  const ctx = buildConsts(code);
+  const nodes = {}, order = []; let m;
+  const instRe = /(\w+)\s*(?::\s*[\w.?]+)?\s*=\s*Instance\.new\(\s*["'](\w+)["']\s*(?:,\s*([A-Za-z_]\w*))?/g;
+  while((m = instRe.exec(code))){
+    if(nodes[m[1]]) continue;
+    nodes[m[1]] = { var:m[1], class:m[2], props:{}, all:{}, parent:m[3] || null, children:[] };
+    order.push(m[1]);
+  }
+  const propRe = /(\w+)\.(\w+)\s*=(?!=)\s*([^\n]+)/g;
+  while((m = propRe.exec(code))){
+    const v = m[1], p = m[2];
+    if(!nodes[v]) continue;
+    const val = m[3].trim().replace(/[,;]+$/, '');
+    if(p === 'Parent'){
+      const pm = /^([A-Za-z_]\w*)/.exec(val);
+      if(pm && nodes[pm[1]] && pm[1] !== v) nodes[v].parent = pm[1];
+    } else {
+      (nodes[v].all[p] = nodes[v].all[p] || []).push(val);
+      nodes[v].props[p] = val;
+    }
+  }
+  const tre = /TweenService:Create\(\s*(\w+)\s*,[^{]*\{([^}]*)\}/g;
+  while((m = tre.exec(code))){
+    const n = nodes[m[1]]; if(!n) continue;
+    m[2].split(/,(?![^()]*\))/).forEach(part=>{
+      const kv = /^\s*(\w+)\s*=\s*([\s\S]+?)\s*$/.exec(part);
+      if(kv) (n.all[kv[1]] = n.all[kv[1]] || []).push(kv[2]);
+    });
+  }
+  order.forEach(id=>{ if(nodes[id].parent && !nodes[nodes[id].parent]) nodes[id].parent = null; });
+  order.forEach(id=>{ const p = nodes[id].parent; if(p) nodes[p].children.push(id); });
+  const roots = order.filter(id=>!nodes[id].parent);
+  const a = { ctx, nodes, order, roots };
+
+  // layout everything in a 360x640 virtual phone screen
+  const go = (id, pr)=>{
+    const n = nodes[id];
+    if(n.class === 'BillboardGui' || n.class === 'SurfaceGui') return;
+    let rect = pr;
+    if(GUI_BOX.has(n.class)){
+      const sz = parseUDim2(getProp(n,'Size','on',ctx)) || { sx:0, ox:100, sy:0, oy:100 };
+      const ps = parseUDim2(getProp(n,'Position','on',ctx)) || { sx:0, ox:0, sy:0, oy:0 };
+      const an = parseVec2(getProp(n,'AnchorPoint','on',ctx)) || { x:0, y:0 };
+      const w = sz.sx*pr.w + sz.ox, h = sz.sy*pr.h + sz.oy;
+      rect = { x: pr.x + ps.sx*pr.w + ps.ox - an.x*w, y: pr.y + ps.sy*pr.h + ps.oy - an.y*h, w, h };
+      n.rect = rect;
+    }
+    n.children.forEach(c=>go(c, rect));
+  };
+  roots.forEach(r=>go(r, { x:0, y:0, w:360, h:640 }));
+
+  const classes = order.map(id=>nodes[id].class);
+  a.esp = classes.some(c=>['Highlight','BillboardGui'].includes(c)) || /\bESP\b/i.test(rawCode) || /NameLabel|HealthBar/.test(rawCode);
+  a.boxes = order.filter(id=>nodes[id].rect && GUI_BOX.has(nodes[id].class));
+
+  const keys = [];
+  const addKey = k=>{ if(!keys.includes(k)) keys.push(k); };
+  Object.keys(ctx.consts).forEach(nm=>{ const km = /^Enum\.KeyCode\.(\w+)$/.exec(ctx.consts[nm]); if(km && /key|bind|toggle|hotkey/i.test(nm)) addKey(km[1]); });
+  Object.keys(ctx.fields).forEach(nm=>{ const km = /^Enum\.KeyCode\.(\w+)$/.exec(ctx.fields[nm]); if(km && /key|bind|toggle|hotkey/i.test(nm)) addKey(km[1]); });
+  const kre = /KeyCode\s*==\s*Enum\.KeyCode\.(\w+)/g;
+  while((m = kre.exec(code))) addKey(m[1]);
+  a.keys = keys.slice(0,3);
+
+  a.functions = Array.from(new Set(Array.from(code.matchAll(/function\s+([\w:.]+)\s*\(/g)).map(x=>x[1]))).slice(0,16);
+  a.services = Array.from(new Set(Array.from(code.matchAll(/GetService\(\s*["'](\w+)["']/g)).map(x=>x[1])));
+  a.events = Array.from(new Set(Array.from(code.matchAll(/(\w+)\s*:\s*Connect\s*\(/g)).map(x=>x[1]))).slice(0,16);
+  return a;
+}
+
+function nodeVis(a, n, state){
+  const ctx = a.ctx, g = p=>getProp(n, p, state, ctx), cls = n.class;
+  const boxy = cls === 'Frame' || cls === 'TextButton' || cls === 'TextLabel' || cls === 'TextBox';
+  const bg = colorOf(g('BackgroundColor3')) || (boxy ? 'rgb(163,162,165)' : null);
+  const tc = colorOf(g('TextColor3')) || 'rgb(27,42,53)';
+  const bt = parseFloat(g('BackgroundTransparency'));
+  const ts = parseFloat(g('TextSize')) || 14;
+  const font = String(g('Font') || '');
+  let text = null;
+  if(n.all.Text) text = evalText(g('Text'), ctx, state);
+  else if(cls === 'TextButton') text = 'Button';
+  else if(cls === 'TextLabel') text = 'Label';
+  const kid = k=>n.children.map(c=>a.nodes[c]).find(x=>x.class === k);
+  let radius = 0; const cr = kid('UICorner');
+  if(cr){
+    const m = /UDim\.new\(\s*([-\d.]+)\s*,\s*([-\d.]+)\s*\)/.exec(getProp(cr,'CornerRadius','on',ctx) || '');
+    radius = m ? (+m[1]) * Math.min(n.rect.w, n.rect.h) + (+m[2]) : 8;
+  }
+  let stroke = null; const sk = kid('UIStroke');
+  if(sk) stroke = { color: colorOf(getProp(sk,'Color','on',ctx)) || '#fff', th: parseFloat(getProp(sk,'Thickness','on',ctx)) || 1 };
+  return { bg, tc, alpha: isNaN(bt) ? 1 : Math.max(0, 1 - bt), ts, bold: /bold|black|semibold/i.test(font), text, radius, stroke };
+}
+
+function elStyle(v, w, h, z){
+  const r = Math.min(v.radius, Math.min(w,h)/2) * z;
+  return 'width:' + (w*z) + 'px;height:' + (h*z) + 'px;border-radius:' + r + 'px;' +
+    'background:' + (v.bg ? toRgba(v.bg, v.alpha) : 'transparent') + ';color:' + v.tc + ';' +
+    'font-size:' + Math.max(5, v.ts*z) + 'px;font-weight:' + (v.bold ? 800 : 500) + ';' +
+    (v.stroke ? 'border:' + Math.max(1, v.stroke.th*z) + 'px solid ' + v.stroke.color + ';' : '');
+}
+
+function renderPhone(a){
+  const W = 168, k = W/360;
+  let inner = '';
+  a.boxes.forEach(id=>{
+    const n = a.nodes[id], v = nodeVis(a, n, 'on'), r = n.rect;
+    inner += '<div class="pv-pel" style="left:' + (r.x*k) + 'px;top:' + (r.y*k) + 'px;' + elStyle(v, r.w, r.h, k) + '">' +
+      (v.text != null ? escapeHtml(v.text) : '') + '</div>';
+  });
+  return '<div class="pv-phone" style="width:' + W + 'px;height:' + (640*k) + 'px">' + inner + '</div>';
+}
+
+function chip(html){ return '<span class="pv-chip">' + html + '</span>'; }
+function swatch(c){ return '<i class="pv-swatch" style="background:' + c + '"></i>'; }
+
+function renderDetail(a, id){
+  const n = a.nodes[id];
+  const von = nodeVis(a, n, 'on'), voff = nodeVis(a, n, 'off');
+  const differ = JSON.stringify(von) !== JSON.stringify(voff);
+  const states = differ ? [['ON', von], ['OFF', voff]] : [['', von]];
+  const w = Math.max(n.rect.w, 8), h = Math.max(n.rect.h, 8);
+  const z = Math.min(2, (states.length > 1 ? 135 : 270) / w, 150 / h);
+  let html = '<div class="pv-detail"><div class="pv-section-title">' + escapeHtml(n.class + ' · ' + n.var) + '</div><div class="pv-states">';
+  states.forEach(([lab, v])=>{
+    html += '<div class="pv-state">' + (lab ? '<div class="pv-statelab ' + (lab === 'ON' ? 'on' : 'off') + '">' + lab + '</div>' : '') +
+      '<div class="pv-el" style="' + elStyle(v, w, h, z) + '">' + escapeHtml(v.text != null ? v.text : '') + '</div>' +
+      '<div class="pv-specs">' +
+        chip('📐 ' + Math.round(n.rect.w) + '×' + Math.round(n.rect.h) + ' px') +
+        (v.text != null ? chip('Aa ' + Math.round(v.ts) + 'px') : '') +
+        (v.bg ? chip(swatch(v.bg) + 'Nền ' + toHex(v.bg)) : '') +
+        (v.text != null ? chip(swatch(v.tc) + 'Chữ ' + toHex(v.tc)) : '') +
+        (v.radius ? chip('◜ bo ' + Math.round(v.radius) + 'px') : '') +
+      '</div></div>';
+  });
+  return html + '</div></div>';
+}
+
+const KEY_NAMES = { LeftControl:'Ctrl', RightControl:'Ctrl', LeftShift:'Shift', RightShift:'Shift', LeftAlt:'Alt', RightAlt:'Alt', Space:'Space', Return:'Enter', Backspace:'⌫', Tab:'Tab', Escape:'Esc',
+  Zero:'0', One:'1', Two:'2', Three:'3', Four:'4', Five:'5', Six:'6', Seven:'7', Eight:'8', Nine:'9', Up:'↑', Down:'↓', Left:'←', Right:'→', Insert:'Ins', Delete:'Del', Home:'Home', End:'End' };
+function renderKeys(a){
+  const caps = a.keys.map(k=>'<span class="pv-key">' + escapeHtml(KEY_NAMES[k] || k) + '</span>').join('<span class="pv-or">hoặc</span>');
+  return '<div class="pv-section-title">Phím bật / tắt</div><div class="pv-scene pv-keyscene">' +
+    '<div class="pv-keyrow">' + caps + '</div><div class="pv-keyhint">Nhấn phím để bật / tắt tính năng</div></div>';
+}
+
+function renderAnalysis(a, rawCode){
+  let html = '';
+  if(a.boxes.length){
+    const pri = a.boxes.filter(id=>/Button/.test(a.nodes[id].class));
+    const det = (pri.length ? pri : a.boxes).slice(0,3);
+    html += '<div class="pv-section-title">Vị trí trên màn hình điện thoại</div><div class="pv-scene">' + renderPhone(a) + '</div>';
+    html += det.map(id=>renderDetail(a, id)).join('');
+  }
+  if(a.keys.length) html += renderKeys(a);
+  if(a.esp) html += '<div class="pv-section-title">Hiệu ứng trong game</div>' + renderESPScene(rawCode);
+  if(!html) html = renderStructureView(a);
+  return html;
+}
+
+function renderESPScene(rawCode){
+  const allyColor = parseColor((/AllyColor\s*=\s*(Color3\.[^\n,]+)/.exec(rawCode)||[])[1]) || 'rgb(80,200,120)';
+  const enemyColor = parseColor((/EnemyColor\s*=\s*(Color3\.[^\n,]+)/.exec(rawCode)||[])[1]) || 'rgb(235,80,80)';
+  const hasHealth = /HealthBar|HealthFill|ShowHealth/.test(rawCode);
+  const hasDistance = /InfoLabel|ShowDistance/.test(rawCode);
+  const hasName = /NameLabel|ShowName/.test(rawCode);
+  function card(color, label, healthPct, dist){
+    return '<div class="pv-esp-box">' +
+      (hasName ? '<div class="pv-esp-name" style="color:'+color+'">'+label+'</div>' : '') +
+      '<div class="pv-player"><div class="pv-esp-outline" style="border:2px solid '+color+'; box-shadow:0 0 12px '+color+'"></div><div class="head"></div><div class="body"></div></div>' +
+      (hasHealth ? '<div class="pv-esp-health"><i style="width:'+healthPct+'%"></i></div>' : '') +
+      (hasDistance ? '<div style="font-size:9px;color:#9db3c9;margin-top:3px">'+dist+'m</div>' : '') +
+      '</div>';
+  }
+  return '<div class="pv-scene"><div style="display:flex;gap:28px">' +
+    card(allyColor,'Ally',82,18) + card(enemyColor,'Enemy',46,63) +
+    '</div><div style="font-size:10px;color:#8aa0b8;margin-top:10px;text-align:center">Mô phỏng Highlight + nhãn tên/khoảng cách qua BillboardGui</div></div>';
+}
+
+function renderStructureView(analysis){
+  let html = '';
+  if(analysis.services.length){
+    html += '<div class="pv-section-title">Service sử dụng</div><div class="pv-pill-row">' +
+      analysis.services.map((sv,i)=>'<span class="pv-pill" style="animation-delay:'+(i*35)+'ms">⚙ '+escapeHtml(sv)+'</span>').join('') + '</div>';
+  }
+  if(analysis.functions.length){
+    html += '<div class="pv-section-title">Hàm đã định nghĩa</div><div class="pv-pill-row">' +
+      analysis.functions.map((f,i)=>'<span class="pv-pill" style="animation-delay:'+(i*35)+'ms">ƒ <b>'+escapeHtml(f)+'</b></span>').join('') + '</div>';
+  }
+  if(analysis.events.length){
+    html += '<div class="pv-section-title">Sự kiện được lắng nghe</div><div class="pv-pill-row">' +
+      analysis.events.map((ev,i)=>'<span class="pv-pill" style="animation-delay:'+(i*35)+'ms">⚡ '+escapeHtml(ev)+'</span>').join('') + '</div>';
+  }
+  if(!html) html = '<div class="pv-empty">Chưa phát hiện được cấu trúc rõ ràng (service/hàm/sự kiện) để minh hoạ.</div>';
+  return '<div class="pv-scene" style="align-items:stretch;text-align:left;display:block">' + html + '</div>';
+}
+
+document.getElementById('previewBtn').addEventListener('click', ()=>{
+  const s = currentScript();
+  const overlay = document.getElementById('previewOverlay');
+  const body = document.getElementById('previewBody');
+  if(!s || !s.code || !s.code.trim()){
+    body.innerHTML = '<div class="pv-empty">Chưa có code để minh hoạ. Hãy nhờ AI viết code trước đã.</div>';
+  } else {
+    try{
+      const analysis = analyzeLuau(s.code);
+      body.innerHTML = renderAnalysis(analysis, s.code);
+    }catch(e){
+      console.error(e);
+      body.innerHTML = '<div class="pv-empty">Không thể phân tích code này để minh hoạ.</div>';
+    }
+  }
+  overlay.classList.add('show');
+});
+document.getElementById('previewClose').addEventListener('click', ()=>{
+  document.getElementById('previewOverlay').classList.remove('show');
+});
+document.getElementById('previewOverlay').addEventListener('click', (e)=>{
+  if(e.target.id === 'previewOverlay') e.currentTarget.classList.remove('show');
+});
+
+/* ---------- 3D tilt (pointer/touch, rAF-throttled, transform only) ---------- */
+(function(){
+  let cur = null, raf = 0, ev = null;
+  const SEL = '[data-tilt],.pv-phone,.pv-states';
+  const reset = ()=>{ if(cur){ cur.style.transform = ''; cur = null; } };
+  document.addEventListener('pointermove', e=>{
+    const el = e.target.closest ? e.target.closest(SEL) : null;
+    if(el !== cur) reset();
+    if(!el) return;
+    cur = el; ev = e;
+    if(raf) return;
+    raf = requestAnimationFrame(()=>{
+      raf = 0; if(!cur) return;
+      const r = cur.getBoundingClientRect();
+      const x = (ev.clientX - r.left)/r.width - .5, y = (ev.clientY - r.top)/r.height - .5;
+      cur.style.transform = 'perspective(700px) rotateX(' + (-y*12) + 'deg) rotateY(' + (x*14) + 'deg)';
+    });
+  }, { passive:true });
+  document.addEventListener('pointerup', reset, { passive:true });
+  document.addEventListener('pointercancel', reset, { passive:true });
+})();
+
+/* ---------- init ---------- */
+renderStyleBtn();
+applyToggles();
+loadScripts();
+if(scripts.length){ activeId = scripts[0].id; }
+renderList();
+renderActive();
+</script>
+</body>
+</html>
