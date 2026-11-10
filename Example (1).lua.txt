@@ -1,84 +1,128 @@
--- this is an example for the script, use this to make your own! (Might be adding custom Themes)
-local Lib = loadstring(game:HttpGet("https://raw.githubusercontent.com/anhyeeuemnhieulam-ai/makingkiba/refs/heads/main/raw__storage_emulated_0_Download_source.lua"))()
+-- Kwargs UI Library v3 · Example
+local Lib = loadstring(game:HttpGet("https://raw.githubusercontent.com/7yhx/kwargs_Ui_Library/main/source.lua"))()
 
 local UI = Lib:Create{
-   Theme = "Dark", -- or any other theme
-   Size = UDim2.new(0, 555, 0, 400) -- default
+	Name = "Kwargs Hub",
+	Theme = "Dark",                       -- Dark, Light, Discord, Red, Ocean, Midnight, Rose, or your own table
+	Size = UDim2.new(0, 580, 0, 400),     -- default
+	ToggleKey = Enum.KeyCode.RightControl, -- show / hide the window
+	Animated = true                        -- false = no looping effects (low-end devices)
 }
 
-local Main = UI:Tab{
-   Name = "Main"
+----------------------------------------------------------------------
+-- Main tab
+----------------------------------------------------------------------
+local Main = UI:Tab{ Name = "Main" }
+local Controls = Main:Divider{ Name = "Controls" }
+
+Controls:Button{
+	Name = "Say hello",
+	Description = "Shows a notification.",
+	Callback = function()
+		UI:Notify{ Title = "Hello!", Content = "Kwargs UI v2 is running.", Type = "Success", Duration = 4 }
+	end
 }
 
-local Divider = Main:Divider{
-   Name = "Main shit"
+Controls:Toggle{
+	Name = "Toggle (style 1)",
+	Description = "Every element supports Name, Description and Callback.",
+	Flag = "toggle1",                     -- Flag = saved in configs
+	Callback = function(State) print("Toggle:", State) end
 }
 
-local QuitDivider = Main:Divider{
-   Name = "Quit"
+Controls:Toggle{
+	Name = "Toggle (style 2)",
+	Style = 2,
+	State = true,
+	Flag = "toggle2"
 }
 
--- All functions have the Name, Description and Callback arguments so you can use them whenever ig yeah
-local KillAll = Divider:Button{
-   Name = "Kill all",
-   Description = "Kills all the players in the game!",
-   Callback = function()
-       print("All players killed.")
-   end
+Controls:Slider{
+	Name = "Speed",
+	Min = 0, Max = 100, Default = 16, Increment = 1, Suffix = " st/s",
+	Flag = "speed",
+	Callback = function(Value) print("Speed:", Value) end
 }
 
-local LoopKillAll = Divider:Toggle{
-   Name = "Loop kill all",
-   Description = "Loop kills everyone in the game.",
-   Callback = function(State)
-       print("Kill state: ", State)
-   end
+Controls:Dropdown{
+	Name = "Player list",
+	Options = { "Player1", "Player2", "Player3", "Player4", "Player5" },
+	Flag = "player",
+	Callback = function(Value) print(Value) end
 }
 
-local OtherToggleStyle = Divider:Toggle{
-   Name = "2nd style of toggle",
-   Style = 2
+Controls:Dropdown{
+	Name = "Multi select",
+	Options = { "Apple", "Banana", "Cherry", "Mango" },
+	Multi = true,
+	Default = { "Apple" },
+	Flag = "fruits",
+	Callback = function(Values) print(table.concat(Values, ", ")) end
 }
 
-local Players = Divider:Dropdown{
-   Name = "Player list",
-   Options = {"Player1", "Player2", "Player3", "Player4", "Player5"},
-   Callback = function(Value)
-       print(Value)
-   end
+Controls:SearchDropdown{
+	Name = "Teleports",
+	Options = { "Pleasant Park", "Loot Lake", "Tomato Town", "Wailing Woods", "Anarchy Acres", "Retail Row" },
+	Callback = function(Value) print(Value) end
 }
 
-Divider:ColorPicker{
-   Name = "ESP color",
-   Default = Color3.fromRGB(0, 255, 255), -- default,
-   Callback = function(Value)
-       print(Value)
-   end
+Controls:ColorPicker{
+	Name = "Accent color",
+	Default = Color3.fromRGB(0, 255, 255),
+	Flag = "color",
+	Callback = function(Value) print(Value) end
 }
 
-Divider:Box{
-   Name = "Car name",
-   ClearText = true, -- whether the textbox clears on focus or not
-   Callback = function(Value)
-       print(Value)
-   end
+Controls:Box{
+	Name = "Display name",
+	Placeholder = "Type here...",
+	ClearText = true,                     -- clear text when focused
+	Flag = "name",
+	Callback = function(Text) print(Text) end
 }
 
-Divider:SearchDropdown{
-   Name = "Teleports",
-   Options = {"Pleasant Park", "Loot Lake", "Tomato Town", "Wailing Woods", "Anarchy Acres", "Retail Row"},
-   ClearText = false, -- default
-   Callback = function(Value)
-       print(Value)
-   end
+Controls:Keybind{
+	Name = "Action key",
+	Default = Enum.KeyCode.E,
+	Flag = "bind",
+	Callback = function(Key) print("Pressed", Key.Name) end
 }
 
-local Quit = QuitDivider:Button{
-   Name = "Closes the ui library.",
-   Callback = function()
-       UI:Quit{
-           Message = "Fuck off...", -- closing message
-           Length = 1 -- seconds the closing message shows for
-       }
-   end
+Controls:Label{ Text = "Tip: press <b>Backspace</b> or <b>Esc</b> while binding a key to clear it." }
+
+----------------------------------------------------------------------
+-- Settings tab
+----------------------------------------------------------------------
+local Settings = UI:Tab{ Name = "Settings" }
+
+local Appearance = Settings:Divider{ Name = "Appearance" }
+Appearance:Dropdown{
+	Name = "Theme",
+	Options = { "Dark", "Light", "Discord", "Red", "Ocean", "Midnight", "Rose" },
+	Default = "Dark",
+	Callback = function(Theme) UI:SetTheme(Theme) end -- switches live, no reload
+}
+
+local Config = Settings:Divider{ Name = "Config" }
+Config:Button{
+	Name = "Save config",
+	Callback = function()
+		local ok, err = UI:SaveConfig("default")
+		UI:Notify{ Title = ok and "Config saved" or "Save failed", Content = err, Type = ok and "Success" or "Error" }
+	end
+}
+Config:Button{
+	Name = "Load config",
+	Callback = function()
+		local ok, err = UI:LoadConfig("default")
+		UI:Notify{ Title = ok and "Config loaded" or "Load failed", Content = err, Type = ok and "Success" or "Error" }
+	end
+}
+
+local Quit = Settings:Divider{ Name = "Quit" }
+Quit:Button{
+	Name = "Close the UI",
+	Callback = function()
+		UI:Quit{ Message = "Goodbye!", Length = 1 }
+	end
 }
