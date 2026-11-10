@@ -532,7 +532,10 @@ function Library:Create(opts)
 	local camera = Service("Workspace").CurrentCamera
 	if camera then
 		local vp = camera.ViewportSize
-		size = UDim2.fromOffset(math.min(size.X.Offset, vp.X - 24), math.min(size.Y.Offset, vp.Y - 24))
+		size = UDim2.fromOffset(
+			math.max(math.min(size.X.Offset, vp.X - 40), 300),
+			math.max(math.min(size.Y.Offset, vp.Y - 100), 220)
+		)
 	end
 
 	self.Gui = New("ScreenGui", {
@@ -548,16 +551,19 @@ function Library:Create(opts)
 		Name = "Main", AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = size,
 		BorderSizePixel = 0, GroupTransparency = 1, Parent = self.Gui,
 	})
-	self:Bind(Main, "BackgroundColor3", "Background")
+	Main.BackgroundTransparency = 1
 	Corner(Main, 14)
 	self.Main = Main
 
-	local BgGradient = New("UIGradient", { Rotation = 120, Parent = Main })
+	-- NOTE: a UIGradient on a CanvasGroup tints ALL its content, so the gradient lives on a child frame.
+	local Bg = New("Frame", { Name = "Bg", Size = UDim2.fromScale(1, 1), BackgroundColor3 = WHITE, BorderSizePixel = 0, ZIndex = 0, Parent = Main })
+	Corner(Bg, 14)
+	local BgGradient = New("UIGradient", { Rotation = 120, Parent = Bg })
 	local function paintBackground()
 		BgGradient.Color = ColorSequence.new(self.Theme.Background, self.Theme.Background:Lerp(self.Theme.Sidebar, 0.7))
 	end
 	paintBackground()
-	self:OnTheme(Main, paintBackground)
+	self:OnTheme(Bg, paintBackground)
 
 	local Border = New("UIStroke", { Thickness = 1.6, Color = WHITE, ApplyStrokeMode = Enum.ApplyStrokeMode.Border, Parent = Main })
 	local BorderGrad = New("UIGradient", { Parent = Border })
